@@ -138,7 +138,10 @@
         <div>Favorite: <span id="fav-label">—</span></div>
         <div>Underdog: <span id="dog-label">—</span></div>
       </div>
-      <div class="input-group"><label>Game Date/Time</label><input id="a-date" type="datetime-local"/></div>
+      <div class="grid2">
+        <div class="input-group"><label>Game Date/Time</label><input id="a-date" type="datetime-local"/></div>
+        <div class="input-group"><label>Betting Locks At (game start time)</label><input id="a-lock" type="datetime-local"/></div>
+      </div>
       <button class="admin-btn" onclick="addGame()">+ Add Game</button>
     </div>
     <div class="card" style="margin-top:12px"><h3 style="color:#FFD700;margin-bottom:12px">Resolve Games</h3><div id="admin-games-list"></div></div>
@@ -372,6 +375,7 @@
     el.innerHTML = games.map(g => {
       const userBet = userBets.find(b => b.game_id === g.id);
       const o1 = calcPayout(g.wp1), o2 = calcPayout(g.wp2);
+      const isLocked = g.lock_time && new Date() >= new Date(g.lock_time);
       return `<div class="game-card">
         <div class="game-teams">
           <div class="team"><div class="team-name">${g.t1}</div><div class="team-odds-pill">${g.wp1}% win · ${o1}x</div></div>
@@ -379,17 +383,19 @@
           <div class="team"><div class="team-name">${g.t2}</div><div class="team-odds-pill">${g.wp2}% win · ${o2}x</div></div>
         </div>
         ${g.game_date ? `<div class="game-date">${new Date(g.game_date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>` : ''}
-        ${userBet
-          ? `<div style="text-align:center;padding:10px;background:rgba(255,215,0,0.1);border-radius:10px;font-size:13px;color:#FFD700">✅ Bet on <strong>${userBet.pick}</strong> — ${userBet.wager} Peels → ${userBet.potential} if win</div>`
-          : `<div class="pick-buttons">
-              <button class="pick-btn" id="pb-${g.id}-1" onclick="selectPick('${g.id}','${g.t1}',${o1})">${g.t1}<span class="btn-payout">Win → ${o1}x payout</span></button>
-              <button class="pick-btn" id="pb-${g.id}-2" onclick="selectPick('${g.id}','${g.t2}',${o2})">${g.t2}<span class="btn-payout">Win → ${o2}x payout</span></button>
-            </div>
-            <div class="wager-row">
-              <input class="wager-input" type="number" id="wager-${g.id}" placeholder="Peels to wager" min="1" oninput="updatePreview('${g.id}')"/>
-              <button class="place-btn" id="placebtn-${g.id}" onclick="placeBet('${g.id}')">Place Bet</button>
-            </div>
-            <div class="payout-preview" id="preview-${g.id}"></div>`}
+        ${isLocked
+          ? `<div style="text-align:center;padding:10px;background:rgba(192,57,43,0.15);border:1px solid rgba(192,57,43,0.3);border-radius:10px;font-size:13px;color:#ff7675">🔒 Betting is locked — game in progress</div>`
+          : userBet
+            ? `<div style="text-align:center;padding:10px;background:rgba(255,215,0,0.1);border-radius:10px;font-size:13px;color:#FFD700">✅ Bet on <strong>${userBet.pick}</strong> — ${userBet.wager} Peels → ${userBet.potential} if win</div>`
+            : `<div class="pick-buttons">
+                <button class="pick-btn" id="pb-${g.id}-1" onclick="selectPick('${g.id}','${g.t1}',${o1})">${g.t1}<span class="btn-payout">Win → ${o1}x payout</span></button>
+                <button class="pick-btn" id="pb-${g.id}-2" onclick="selectPick('${g.id}','${g.t2}',${o2})">${g.t2}<span class="btn-payout">Win → ${o2}x payout</span></button>
+              </div>
+              <div class="wager-row">
+                <input class="wager-input" type="number" id="wager-${g.id}" placeholder="Peels to wager" min="1" oninput="updatePreview('${g.id}')"/>
+                <button class="place-btn" id="placebtn-${g.id}" onclick="placeBet('${g.id}')">Place Bet</button>
+              </div>
+              <div class="payout-preview" id="preview-${g.id}"></div>`}
       </div>`;
     }).join('');
   }
@@ -506,11 +512,12 @@
     const wp1 = parseFloat(document.getElementById('a-wp1').value);
     const wp2 = parseFloat(document.getElementById('a-wp2').value);
     const date = document.getElementById('a-date').value;
+    const lock = document.getElementById('a-lock').value;
     if (!t1 || !t2) { toast('Enter both team names'); return; }
     if (isNaN(wp1) || isNaN(wp2) || wp1 < 1 || wp2 < 1) { toast('Enter valid win percentages'); return; }
-    const { error } = await supabase.from('games').insert({ t1, t2, wp1, wp2, game_date: date || null, status: 'open' });
+    const { error } = await supabase.from('games').insert({ t1, t2, wp1, wp2, game_date: date || null, lock_time: lock || null, status: 'open' });
     if (error) { toast('Error adding game: ' + error.message); return; }
-    ['a-t1', 'a-t2', 'a-wp1', 'a-wp2', 'a-date'].forEach(id => document.getElementById(id).value = '');
+    ['a-t1', 'a-t2', 'a-wp1', 'a-wp2', 'a-date', 'a-lock'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('preview-odds-1').textContent = '—';
     document.getElementById('preview-odds-2').textContent = '—';
     document.getElementById('odds-preview-box').style.display = 'none';
