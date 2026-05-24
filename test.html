@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1 id="status">Testing...</h1>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const client = window.supabase.createClient(
+    'https://egnbjvbcttafemsyekjw.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnbmJqdmJjdHRhZmVtc3lla2p3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1NDgyNzQsImV4cCI6MjA5NTEyNDI3NH0.x8ukqsRCXAeNQ3pe-VCmRoMI2p-wlVI11UfVQ__-wYQ'
+  );
+  client.auth.signUp({email:'test123@test.com', password:'test123456'})
+    .then(({data, error}) => {
+      document.getElementById('status').textContent = error ? 'ERROR: ' + error.message : 'SUCCESS: ' + JSON.stringify(data);
+    });
+</script>
+</body>
+</html>
