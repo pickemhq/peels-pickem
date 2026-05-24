@@ -602,25 +602,36 @@
   }
 
   // ─── Boot ─────────────────────────────────────────────────
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
-      currentUser = session.user;
-      const profile = await loadProfile(currentUser.id);
-      if (profile) {
-        applyProfile(profile);
-        renderGames();
-        renderLeaderboard();
+  async function boot() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        currentUser = session.user;
+        const profile = await loadProfile(currentUser.id);
+        if (profile) { applyProfile(profile); }
+      } else {
+        document.getElementById('auth-overlay').style.display = 'flex';
       }
-    } else {
-      currentUser = null; currentProfile = null;
-      document.getElementById('auth-overlay').style.display = 'flex';
       renderGames();
-    }
-  });
+      renderLeaderboard();
 
-  // Load games even before login for viewing
-  renderGames();
-  renderLeaderboard();
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          currentUser = session.user;
+          const profile = await loadProfile(currentUser.id);
+          if (profile) { applyProfile(profile); renderGames(); renderLeaderboard(); }
+        } else if (event === 'SIGNED_OUT') {
+          currentUser = null; currentProfile = null;
+          document.getElementById('auth-overlay').style.display = 'flex';
+          showPage('games', document.getElementById('nav-games'));
+        }
+      });
+    } catch(e) {
+      console.error('Boot error:', e);
+    }
+  }
+
+  boot();
 </script>
 </body>
 </html>
