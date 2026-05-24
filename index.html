@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Peels Pick'em 🍌</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -259,26 +259,31 @@
   }
 
   async function authSubmit() {
-    setError('auth-error', '');
-    const email = document.getElementById('auth-email').value.trim();
-    const pass = document.getElementById('auth-password').value;
-    if (!email || !pass) { setError('auth-error', 'Please fill in all fields.'); return; }
-    const btn = document.getElementById('auth-main-btn');
-    btn.textContent = '...'; btn.disabled = true;
+    try {
+      setError('auth-error', '');
+      const email = document.getElementById('auth-email').value.trim();
+      const pass = document.getElementById('auth-password').value;
+      if (!email || !pass) { setError('auth-error', 'Please fill in all fields.'); return; }
+      const btn = document.getElementById('auth-main-btn');
+      btn.textContent = '...'; btn.disabled = true;
 
-    if (isSignup) {
-      const username = document.getElementById('auth-username').value.trim();
-      if (!username) { setError('auth-error', 'Enter a username.'); btn.textContent = 'Sign Up'; btn.disabled = false; return; }
-      const { data, error } = await supabase.auth.signUp({ email, password: pass });
-      if (error) { setError('auth-error', error.message); btn.textContent = 'Sign Up'; btn.disabled = false; return; }
-      // Create profile row
-      await supabase.from('profiles').insert({ id: data.user.id, username, peels: 100, is_admin: false });
-      toast('Welcome! You have 100 Peels 🍌');
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-      if (error) { setError('auth-error', 'Incorrect email or password.'); btn.textContent = 'Sign In'; btn.disabled = false; return; }
+      if (isSignup) {
+        const username = document.getElementById('auth-username').value.trim();
+        if (!username) { setError('auth-error', 'Enter a username.'); btn.textContent = 'Sign Up'; btn.disabled = false; return; }
+        const { data, error } = await supabase.auth.signUp({ email, password: pass });
+        if (error) { setError('auth-error', error.message); btn.textContent = 'Sign Up'; btn.disabled = false; return; }
+        await supabase.from('profiles').insert({ id: data.user.id, username, peels: 100, is_admin: false });
+        toast('Welcome! You have 100 Peels 🍌');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) { setError('auth-error', 'Incorrect email or password.'); btn.textContent = 'Sign In'; btn.disabled = false; return; }
+      }
+      btn.textContent = isSignup ? 'Sign Up' : 'Sign In'; btn.disabled = false;
+    } catch(e) {
+      setError('auth-error', 'Error: ' + e.message);
+      const btn = document.getElementById('auth-main-btn');
+      btn.textContent = isSignup ? 'Sign Up' : 'Sign In'; btn.disabled = false;
     }
-    btn.textContent = isSignup ? 'Sign Up' : 'Sign In'; btn.disabled = false;
   }
 
   function showAdminLogin() {
