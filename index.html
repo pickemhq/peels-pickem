@@ -328,7 +328,7 @@
     currentProfile = profile;
     document.getElementById('auth-overlay').style.display = 'none';
     document.getElementById('header-name').textContent = profile.username;
-    document.getElementById('header-peels').textContent = profile.peels.toFixed(1) + ' 🍌';
+    document.getElementById('header-peels').textContent = Math.round(profile.peels) + ' 🍌';
     document.getElementById('nav-admin').style.display = profile.is_admin ? '' : 'none';
   }
 
@@ -361,7 +361,7 @@
     const profile = await loadProfile(currentUser.id);
     if (profile) {
       currentProfile = { ...currentProfile, ...profile };
-      document.getElementById('header-peels').textContent = profile.peels.toFixed(1) + ' 🍌';
+      document.getElementById('header-peels').textContent = Math.round(profile.peels) + ' 🍌';
     }
   }
 
@@ -398,7 +398,7 @@
                 <button class="pick-btn" id="pb-${g.id}-2" onclick="selectPick('${g.id}','${g.t2}',${o2})">${g.t2}<span class="btn-payout">Win → ${o2}x payout</span></button>
               </div>
               <div class="wager-row">
-                <input class="wager-input" type="number" id="wager-${g.id}" placeholder="Peels to wager" min="1" oninput="updatePreview('${g.id}')"/>
+                <input class="wager-input" type="number" id="wager-${g.id}" placeholder="Peels to wager" min="1" step="1" oninput="updatePreview('${g.id}')"/>
                 <button class="place-btn" id="placebtn-${g.id}" onclick="placeBet('${g.id}')">Place Bet</button>
               </div>
               <div class="payout-preview" id="preview-${g.id}"></div>`}
@@ -416,7 +416,7 @@
     const w = parseFloat(document.getElementById('wager-' + gameId)?.value) || 0;
     const p = document.getElementById('preview-' + gameId);
     const pick = picks[gameId];
-    if (p) p.textContent = (w > 0 && pick) ? `Betting on ${pick.team} → win ${(w * pick.odds).toFixed(1)} Peels` : '';
+    if (p) p.textContent = (w > 0 && pick) ? `Betting on ${pick.team} → win ${Math.round(w * pick.odds)} Peels` : '';
   }
 
   async function placeBet(gameId) {
@@ -430,12 +430,13 @@
     const btn = document.getElementById('placebtn-' + gameId);
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
 
-    const newPeels = parseFloat((currentProfile.peels - wager).toFixed(2));
-    const potential = parseFloat((wager * pick.odds).toFixed(2));
+    const wagerRounded = Math.round(wager);
+    const potential = Math.round(wagerRounded * pick.odds);
+    const newPeels = Math.round(currentProfile.peels - wagerRounded);
 
     const { error: betError } = await supabase.from('bets').insert({
       user_id: currentUser.id, game_id: gameId, pick: pick.team,
-      odds: pick.odds, wager, status: 'pending', potential
+      odds: pick.odds, wager: wagerRounded, status: 'pending', potential
     });
     if (betError) { toast('Error placing bet. Try again.'); if (btn) { btn.disabled = false; btn.textContent = 'Place Bet'; } return; }
 
@@ -444,7 +445,7 @@
 
     await refreshHeader();
     renderGames();
-    toast(`Bet placed! ${wager} Peels on ${pick.team} 🍌`);
+    toast(`Bet placed! ${wagerRounded} Peels on ${pick.team} 🍌`);
   }
 
   // ─── My Bets page ─────────────────────────────────────────
@@ -480,7 +481,7 @@
       <div class="lb-row">
         <div class="lb-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</div>
         <div class="lb-name">${u.username}${currentProfile && u.username === currentProfile.username ? ' <span style="font-size:11px;color:rgba(255,215,0,0.4)">(you)</span>' : ''}</div>
-        <div class="lb-peels">${u.peels.toFixed(1)} <span>Peels</span></div>
+        <div class="lb-peels">${Math.round(u.peels)} <span>Peels</span></div>
       </div>`).join('');
   }
 
@@ -565,7 +566,7 @@
       <div class="admin-game-item">
         <div class="admin-game-info"><strong>${u.username}</strong></div>
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-family:'Bangers',cursive;color:#FFD700;font-size:16px">${u.peels.toFixed(1)} 🍌</span>
+          <span style="font-family:'Bangers',cursive;color:#FFD700;font-size:16px">${Math.round(u.peels)} 🍌</span>
           <button class="result-btn" style="padding:5px 10px;font-size:12px" onclick="adjustPeels('${u.id}','${u.username}')">Adjust</button>
         </div>
       </div>`).join('');
