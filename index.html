@@ -99,10 +99,12 @@
   .player-card.common{border:2px solid rgba(200,200,200,0.4);background:linear-gradient(135deg,rgba(200,200,200,0.08),rgba(255,255,255,0.02))}
   .player-card.rare{border:2px solid rgba(59,130,246,0.6);background:linear-gradient(135deg,rgba(59,130,246,0.15),rgba(255,255,255,0.02))}
   .player-card.legendary{border:2px solid rgba(245,158,11,0.8);background:linear-gradient(135deg,rgba(245,158,11,0.2),rgba(255,100,0,0.1))}
+  .player-card.mythic{border:2px solid rgba(232,121,249,0.9);background:linear-gradient(135deg,rgba(232,121,249,0.2),rgba(139,92,246,0.15));box-shadow:0 0 20px rgba(232,121,249,0.2)}
   .card-rarity{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}
   .rarity-common{color:#aaa}
   .rarity-rare{color:#60a5fa}
   .rarity-legendary{color:#FFD700}
+  .rarity-mythic{color:#e879f9}
   .card-player{font-family:'Bangers',cursive;font-size:22px;letter-spacing:1px;margin-bottom:4px}
   .card-team{font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:8px}
   .card-pts{font-family:'Bangers',cursive;font-size:32px;color:#FFD700}
@@ -273,6 +275,7 @@
         <option value="common">Common (1x multiplier)</option>
         <option value="rare">Rare (2x multiplier)</option>
         <option value="legendary">Legendary (3x multiplier)</option>
+        <option value="mythic">Mythic (5x multiplier)</option>
       </select>
     </div>
     <div class="input-group"><label>Pack</label>
@@ -294,7 +297,8 @@
     <div class="input-group"><label>Price (Peels)</label><input id="cp-price" type="number" value="200" min="1"/></div>
     <div class="input-group"><label>Common % (e.g. 60)</label><input id="cp-common" type="number" value="60" min="0" max="100"/></div>
     <div class="input-group"><label>Rare % (e.g. 30)</label><input id="cp-rare" type="number" value="30" min="0" max="100"/></div>
-    <div class="input-group"><label>Legendary % (e.g. 10)</label><input id="cp-legendary" type="number" value="10" min="0" max="100"/></div>
+    <div class="input-group"><label>Legendary % (e.g. 8)</label><input id="cp-legendary" type="number" value="8" min="0" max="100"/></div>
+    <div class="input-group"><label>Mythic % (e.g. 2)</label><input id="cp-mythic" type="number" value="2" min="0" max="100"/></div>
     <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:8px">Note: percentages should add up to 100</div>
     <div class="auth-error" id="cp-error"></div>
     <div class="modal-btns">
@@ -756,14 +760,14 @@
   }
 
   // ─── Cards ───────────────────────────────────────────────────
-  const RARITY_MULTIPLIER = { common: 1, rare: 2, legendary: 3 };
-  const RARITY_COLOR = { common: '#aaa', rare: '#60a5fa', legendary: '#FFD700' };
+  const RARITY_MULTIPLIER = { common: 1, rare: 2, legendary: 3, mythic: 5 };
+  const RARITY_COLOR = { common: '#aaa', rare: '#60a5fa', legendary: '#FFD700', mythic: '#e879f9' };
 
   function cardHTML(card, showMult=true) {
     const mult = RARITY_MULTIPLIER[card.rarity] || 1;
     const pts = card.total_peels_earned || 0;
     return `<div class="player-card ${card.rarity}">
-      <div class="card-rarity rarity-${card.rarity}">${card.rarity} ${card.rarity==='legendary'?'⭐':card.rarity==='rare'?'💎':'·'}</div>
+      <div class="card-rarity rarity-${card.rarity}">${card.rarity} ${card.rarity==='mythic'?'🔮':card.rarity==='legendary'?'⭐':card.rarity==='rare'?'💎':'·'}</div>
       <div class="card-player">${card.player_name}</div>
       <div class="card-team">${card.team_name||''}</div>
       <div class="card-pts">${pts}</div>
@@ -798,22 +802,24 @@
           <div class="pack-odds">
             <span style="color:#aaa">Common ${p.common_pct}%</span> ·
             <span style="color:#60a5fa">Rare ${p.rare_pct}%</span> ·
-            <span style="color:#FFD700">Legendary ${p.legendary_pct}%</span>
+            <span style="color:#FFD700">Legendary ${p.legendary_pct}%</span> ·
+            <span style="color:#e879f9">Mythic ${p.mythic_pct||0}%</span>
           </div>
-          <button class="pack-btn" onclick="buyPack('${p.id}','${p.name}',${p.price},${p.common_pct},${p.rare_pct},${p.legendary_pct})">Open Pack — ${p.price} Peels</button>
+          <button class="pack-btn" onclick="buyPack('${p.id}','${p.name}',${p.price},${p.common_pct},${p.rare_pct},${p.legendary_pct},${p.mythic_pct||0})">Open Pack — ${p.price} Peels</button>
         </div>`).join('');
     }
   }
 
-  async function buyPack(packId, packName, price, commonPct, rarePct, legendaryPct) {
+  async function buyPack(packId, packName, price, commonPct, rarePct, legendaryPct, mythicPct=0) {
     if (!currentUser) { toast('Sign in first!'); return; }
     if (currentProfile.peels < price) { toast('Not enough Peels! 🍌'); return; }
 
     // Roll rarity
     const roll = Math.random() * 100;
     let rarity = 'common';
-    if (roll < legendaryPct) rarity = 'legendary';
-    else if (roll < legendaryPct + rarePct) rarity = 'rare';
+    if (roll < mythicPct) rarity = 'mythic';
+    else if (roll < mythicPct + legendaryPct) rarity = 'legendary';
+    else if (roll < mythicPct + legendaryPct + rarePct) rarity = 'rare';
 
     // Get a random card of that rarity from this pack
     const { data: cards } = await supabase.from('player_cards').select('*').eq('pack_id', packId).eq('rarity', rarity);
@@ -855,9 +861,10 @@
     const common = parseInt(document.getElementById('cp-common').value);
     const rare = parseInt(document.getElementById('cp-rare').value);
     const legendary = parseInt(document.getElementById('cp-legendary').value);
+    const mythic = parseInt(document.getElementById('cp-mythic').value);
     if (!name) { setError('cp-error', 'Enter a pack name.'); return; }
-    if (common + rare + legendary !== 100) { setError('cp-error', 'Percentages must add up to 100.'); return; }
-    const { error } = await supabase.from('card_packs').insert({ name, price, common_pct: common, rare_pct: rare, legendary_pct: legendary });
+    if (common + rare + legendary + mythic !== 100) { setError('cp-error', 'Percentages must add up to 100.'); return; }
+    const { error } = await supabase.from('card_packs').insert({ name, price, common_pct: common, rare_pct: rare, legendary_pct: legendary, mythic_pct: mythic });
     if (error) { setError('cp-error', error.message); return; }
     closeModal('create-pack-modal');
     toast('Pack created! 🎁');
@@ -936,7 +943,7 @@
       packsEl.innerHTML = (packs||[]).length ? packs.map(p => `
         <div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;display:flex;justify-content:space-between">
           <span>${p.name}</span>
-          <span style="color:rgba(255,215,0,0.7)">${p.price}🍌 · C${p.common_pct}%/R${p.rare_pct}%/L${p.legendary_pct}%</span>
+          <span style="color:rgba(255,215,0,0.7)">${p.price}🍌 · C${p.common_pct}%/R${p.rare_pct}%/L${p.legendary_pct}%/M${p.mythic_pct||0}%</span>
         </div>`).join('') : '<div style="font-size:13px;color:rgba(255,255,255,0.3);padding:8px 0">No packs yet</div>';
     }
     // Cards
