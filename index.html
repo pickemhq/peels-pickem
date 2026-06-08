@@ -861,7 +861,12 @@
     const card = cardPool[Math.floor(Math.random() * cardPool.length)];
 
     // Add card to user collection
-    await supabase.from('user_cards').insert({ user_id: currentUser.id, card_id: card.id, total_peels_earned: 0 });
+    const { error: insertError } = await supabase.from('user_cards').insert({ user_id: currentUser.id, card_id: card.id, total_peels_earned: 0 });
+    if (insertError) {
+      toast('Card error: ' + insertError.message);
+      packPurchaseInProgress = false;
+      return;
+    }
 
     // Show reveal animation
     document.getElementById('card-reveal-box').innerHTML = cardHTML(card);
