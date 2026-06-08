@@ -763,16 +763,19 @@
   const RARITY_MULTIPLIER = { common: 1, rare: 2, legendary: 3, mythic: 5 };
   const RARITY_COLOR = { common: '#aaa', rare: '#60a5fa', legendary: '#FFD700', mythic: '#e879f9' };
 
-  function cardHTML(card, showMult=true) {
-    const mult = RARITY_MULTIPLIER[card.rarity] || 1;
+  function cardHTML(card, showMult=true, lockedRarity=null, userCardId=null, showSell=false) {
+    const rarity = lockedRarity || card.rarity;
+    const mult = RARITY_MULTIPLIER[rarity] || 1;
     const pts = card.total_peels_earned || 0;
-    return `<div class="player-card ${card.rarity}">
-      <div class="card-rarity rarity-${card.rarity}">${card.rarity} ${card.rarity==='mythic'?'🔮':card.rarity==='legendary'?'⭐':card.rarity==='rare'?'💎':'·'}</div>
+    const sellPrice = Math.round(200 * (mult / 5)); // sell value based on rarity
+    return `<div class="player-card ${rarity}">
+      <div class="card-rarity rarity-${rarity}">${rarity} ${rarity==='mythic'?'🔮':rarity==='legendary'?'⭐':rarity==='rare'?'💎':'·'}</div>
       <div class="card-player">${card.player_name}</div>
       <div class="card-team">${card.team_name||''}</div>
       <div class="card-pts">${pts}</div>
       <div class="card-pts-lbl">Peels earned</div>
-      ${showMult?`<div class="card-mult" style="color:${RARITY_COLOR[card.rarity]}">${mult}x multiplier</div>`:''}
+      ${showMult?`<div class="card-mult" style="color:${RARITY_COLOR[rarity]}">${mult}x multiplier</div>`:''}
+      ${showSell&&userCardId?`<button onclick="sellCard('${userCardId}','${card.player_name}',${sellPrice})" style="margin-top:10px;width:100%;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif">Sell for ${sellPrice} 🍌</button>`:''}
     </div>`;
   }
 
@@ -784,7 +787,7 @@
     if (!myCards?.length) {
       myEl.innerHTML = '<div class="card" style="text-align:center;padding:24px;color:rgba(255,255,255,0.4)">No cards yet! Buy a pack or check if you have a free starter card.</div>';
     } else {
-      myEl.innerHTML = `<div class="cards-grid-collection">${myCards.map(uc => cardHTML(uc.player_cards)).join('')}</div>`;
+      myEl.innerHTML = `<div class="cards-grid-collection">${myCards.map(uc => cardHTML(uc.player_cards, true, uc.locked_rarity, uc.id, true)).join('')}</div>`;
     }
 
     // Packs
@@ -955,6 +958,20 @@
           <span style="color:rgba(255,255,255,0.4)">${c.card_packs?.name||'No pack'}</span>
         </div>`).join('') : '<div style="font-size:13px;color:rgba(255,255,255,0.3);padding:8px 0">No cards yet</div>';
     }
+  }
+
+  // ─── Sell card ───────────────────────────────────────────────
+  async function sellCard(userCardId, playerName, sellPrice) {
+    if (!confirm(`Sell ${playerName} for ${sellPrice} Peels? This cannot be undone.`)) return;
+    const { error } = await supabase.from('user_cards').delete().eq('id', userCardId);
+    if (error) { toast('Error selling card: ' + error.message); return; }
+    const { data: profile } = await supabase.from('profiles').select('peels').eq('id', currentUser.id).single();
+    if (profile) {
+      await supabase.from('profiles').update({ peels: Math.round(profile.peels + sellPrice) }).eq('id', currentUser.id);
+      await refreshHeader();
+    }
+    toast(`Sold ${playerName} for ${sellPrice} Peels! 🍌`);
+    renderCardsPage();
   }
 
   // ─── Boot ─────────────────────────────────────────────────
