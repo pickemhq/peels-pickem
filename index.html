@@ -780,6 +780,19 @@
   }
 
   async function renderCardsPage() {
+    // Check for unseen earnings first
+    const { data: unseen } = await supabase.from('card_earnings_log')
+      .select('*, player_cards(player_name)')
+      .eq('user_id', currentUser.id)
+      .eq('seen', false)
+      .order('created_at', {ascending: false});
+
+    if (unseen?.length) {
+      showEarningsPopup(unseen);
+      // Mark all as seen
+      await supabase.from('card_earnings_log').update({ seen: true }).eq('user_id', currentUser.id).eq('seen', false);
+    }
+
     // My cards
     const myEl = document.getElementById('my-cards-list');
     myEl.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
@@ -921,20 +934,35 @@
     if (!holders?.length) { setError('ps-error', 'No one owns this card yet.'); return; }
 
     // Log the stat entry
-    await supabase.from('card_stat_logs').insert({ card_id: cardId, base_peels: basePeels, notes, created_at: new Date().toISOString() });
+    const { data: logEntry } = await supabase.from('card_stat_logs').insert({ 
+      card_id: cardId, base_peels: basePeels, notes, created_at: new Date().toISOString() 
+    }).select().single();
 
     // Pay out each holder
     for (const holder of holders) {
-      // Update user_cards total
-      await supabase.from('user_cards').update({ total_peels_earned: (holder.total_peels_earned || 0) + payout }).eq('id', holder.id);
+      const holderMult = RARITY_MULTIPLIER[holder.locked_rarity || card.rarity] || 1;
+      const holderPayout = Math.round(basePeels * holderMult);
+      // Update user_cards total + log for notification
+      await supabase.from('user_cards').update({ 
+        total_peels_earned: (holder.total_peels_earned || 0) + holderPayout 
+      }).eq('id', holder.id);
+      // Log per-user notification
+      await supabase.from('card_earnings_log').insert({
+        user_id: holder.user_id,
+        user_card_id: holder.id,
+        card_id: cardId,
+        payout: holderPayout,
+        notes,
+        seen: false
+      });
       // Pay peels to profile
       const { data: profile } = await supabase.from('profiles').select('peels').eq('id', holder.user_id).single();
-      if (profile) await supabase.from('profiles').update({ peels: Math.round(profile.peels + payout) }).eq('id', holder.user_id);
+      if (profile) await supabase.from('profiles').update({ peels: Math.round(profile.peels + holderPayout) }).eq('id', holder.user_id);
     }
 
     closeModal('player-stats-modal');
-    updateHeader();
-    toast(`Paid ${payout} Peels (${basePeels} × ${mult}x) to ${holders.length} card holder(s)! 🃏`);
+    await refreshHeader();
+    toast(`Paid out to ${holders.length} card holder(s)! 🃏`);
   }
 
   async function renderAdminCardsSection() {
@@ -958,6 +986,33 @@
           <span style="color:rgba(255,255,255,0.4)">${c.card_packs?.name||'No pack'}</span>
         </div>`).join('') : '<div style="font-size:13px;color:rgba(255,255,255,0.3);padding:8px 0">No cards yet</div>';
     }
+  }
+
+  // ─── Earnings popup ──────────────────────────────────────────
+  function showEarningsPopup(earnings) {
+    const existing = document.getElementById('earnings-popup');
+    if (existing) existing.remove();
+    const total = earnings.reduce((sum, e) => sum + e.payout, 0);
+    const lines = earnings.map(e => `
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px">
+        <span style="color:rgba(255,255,255,0.8)">${e.player_cards?.player_name||'Player'} ${e.notes?'· '+e.notes:''}</span>
+        <span style="color:#FFD700;font-weight:700">+${e.payout} 🍌</span>
+      </div>`).join('');
+    const popup = document.createElement('div');
+    popup.id = 'earnings-popup';
+    popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:400';
+    popup.innerHTML = `
+      <div style="background:#1e293b;border:2px solid #FFD700;border-radius:20px;padding:24px;width:340px;max-width:95vw;max-height:80vh;overflow-y:auto">
+        <div style="font-family:'Bangers',cursive;font-size:26px;color:#FFD700;letter-spacing:2px;text-align:center;margin-bottom:4px">🃏 Card Earnings!</div>
+        <div style="text-align:center;font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:16px">Your cards earned Peels while you were away</div>
+        ${lines}
+        <div style="display:flex;justify-content:space-between;padding:12px 0 0;font-weight:700;font-size:15px">
+          <span>Total earned</span>
+          <span style="color:#FFD700;font-family:'Bangers',cursive;font-size:20px">+${total} 🍌</span>
+        </div>
+        <button onclick="document.getElementById('earnings-popup').remove()" style="margin-top:14px;width:100%;background:#FFD700;color:#1a1a2e;border:none;padding:11px;border-radius:12px;font-weight:700;cursor:pointer;font-size:15px;font-family:'DM Sans',sans-serif">Sweet! 🍌</button>
+      </div>`;
+    document.body.appendChild(popup);
   }
 
   // ─── Sell card ───────────────────────────────────────────────
