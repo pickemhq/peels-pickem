@@ -335,6 +335,17 @@
   </div>
 </div>
 
+<!-- Starter card picker -->
+<div class="modal-overlay" id="starter-card-modal" style="display:none">
+  <div class="modal-box">
+    <h3>🎁 Pick Your Starter Card!</h3>
+    <p style="color:rgba(255,255,255,0.5);font-size:13px;margin-bottom:14px">Choose any player — you'll get them as a Common card to start your collection!</p>
+    <input class="search-box" id="starter-search" placeholder="Search players..." oninput="filterStarterPlayers()" style="margin-bottom:10px"/>
+    <div class="team-list" id="starter-player-list" style="max-height:300px;overflow-y:auto"></div>
+    <div class="auth-error" id="starter-error"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -407,13 +418,9 @@
         const { data, error } = await supabase.auth.signUp({ email, password: pass });
         if (error) { setError('auth-error', error.message); btn.textContent = 'Sign Up'; btn.disabled = false; return; }
         await supabase.from('profiles').insert({ id: data.user.id, username, peels: 100, is_admin: false });
-        // Give free starter pack opening
-        const { data: starterPack } = await supabase.from('card_packs').select('id').eq('is_starter', true).single();
-        if (starterPack) {
-          // Mark user as having a free pack to open
-          await supabase.from('free_pack_claims').insert({ user_id: data.user.id, pack_id: starterPack.id, claimed: false });
-        }
-        toast('Welcome! You have 100 Peels + a free starter pack! 🍌🃏');
+        // Show starter card picker after login
+        setTimeout(() => showStarterCardPicker(data.user.id), 800);
+        toast('Welcome! You have 100 Peels! Pick your free starter card 🍌🃏');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) { setError('auth-error', 'Incorrect email or password.'); btn.textContent = 'Sign In'; btn.disabled = false; return; }
@@ -771,6 +778,9 @@
   // ─── Cards ───────────────────────────────────────────────────
   const RARITY_MULTIPLIER = { common: 1, rare: 2, legendary: 3, mythic: 5 };
   const RARITY_COLOR = { common: '#aaa', rare: '#60a5fa', legendary: '#FFD700', mythic: '#e879f9' };
+  const UPGRADE_COST = { common: 200, rare: 500, legendary: 1000 };
+  const RARITY_ORDER = ['common', 'rare', 'legendary', 'mythic'];
+  const RARITY_NEXT = { common: 'rare', rare: 'legendary', legendary: 'mythic' };
 
   function cardHTML(card, showMult=true, lockedRarity=null, userCardId=null, showSell=false, earnedPeels=null) {
     const rarity = lockedRarity || card.rarity;
@@ -780,11 +790,12 @@
     return `<div class="player-card ${rarity}">
       <div class="card-rarity rarity-${rarity}">${rarity} ${rarity==='mythic'?'🔮':rarity==='legendary'?'⭐':rarity==='rare'?'💎':'·'}</div>
       <div class="card-player">${card.player_name}</div>
-      <div class="card-team">${card.position?'<span style="background:rgba(255,215,0,0.15);border-radius:50px;padding:1px 8px;font-size:11px;margin-right:4px">'+card.position+'</span>':''}${card.team_name||''}</div>
+      <div class="card-team" style="display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap">${card.position?`<span style="background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.3);border-radius:50px;padding:2px 10px;font-size:11px;font-weight:700;color:#FFD700">${card.position==='Pitcher'?'⚾ Pitcher':'🏏 Batter'}</span>`:''}<span style="font-size:12px;color:rgba(255,255,255,0.5)">${card.team_name||''}</span></div>
       <div class="card-pts">${pts}</div>
       <div class="card-pts-lbl">Peels earned</div>
       ${showMult?`<div class="card-mult" style="color:${RARITY_COLOR[rarity]}">${mult}x multiplier</div>`:''}
-      ${showSell&&userCardId?`<button onclick="sellCard('${userCardId}','${card.player_name}',${sellPrice})" style="margin-top:10px;width:100%;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;font-family:'DM Sans',sans-serif">Sell for ${sellPrice} 🍌</button>`:''}
+      ${showSell&&userCardId&&rarity!=='mythic'?`<button onclick="upgradeCard('${userCardId}','${card.player_name}','${rarity}')" style="margin-top:6px;width:100%;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);color:#FFD700;padding:6px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">⬆ Upgrade to ${RARITY_NEXT[rarity]||''} — ${UPGRADE_COST[rarity]||0} 🍌</button>`:''}
+      ${showSell&&userCardId?`<button onclick="sellCard('${userCardId}','${card.player_name}',${sellPrice})" style="margin-top:4px;width:100%;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">Sell for ${sellPrice} 🍌</button>`:''}
     </div>`;
   }
 
@@ -1037,6 +1048,26 @@
     document.body.appendChild(popup);
   }
 
+  // ─── Upgrade card ────────────────────────────────────────────
+  async function upgradeCard(userCardId, playerName, currentRarity) {
+    const cost = UPGRADE_COST[currentRarity];
+    const nextRarity = RARITY_NEXT[currentRarity];
+    if (!nextRarity) { toast('Already max rarity!'); return; }
+    if (!confirm(`Upgrade ${playerName} from ${currentRarity} to ${nextRarity} for ${cost} Peels?`)) return;
+
+    const { data: profile } = await supabase.from('profiles').select('peels').eq('id', currentUser.id).single();
+    if (!profile || profile.peels < cost) { toast('Not enough Peels! 🍌'); return; }
+
+    // Deduct peels
+    await supabase.from('profiles').update({ peels: Math.round(profile.peels - cost) }).eq('id', currentUser.id);
+    // Update card rarity
+    await supabase.from('user_cards').update({ locked_rarity: nextRarity }).eq('id', userCardId);
+
+    await refreshHeader();
+    toast(`${playerName} upgraded to ${nextRarity}! 🎉`);
+    renderCardsPage();
+  }
+
   // ─── Sell card ───────────────────────────────────────────────
   async function sellCard(userCardId, playerName, sellPrice) {
     if (!confirm(`Sell ${playerName} for ${sellPrice} Peels? This cannot be undone.`)) return;
@@ -1049,6 +1080,55 @@
     }
     toast(`Sold ${playerName} for ${sellPrice} Peels! 🍌`);
     renderCardsPage();
+  }
+
+  // ─── Starter card picker ─────────────────────────────────────
+  let starterUserId = null;
+  let allPlayersList = [];
+
+  async function showStarterCardPicker(userId) {
+    starterUserId = userId;
+    const { data: players } = await supabase.from('player_cards').select('id, player_name, team_name, position').order('player_name');
+    // Deduplicate by player name (show each player once)
+    const seen = new Set();
+    allPlayersList = (players||[]).filter(p => {
+      if (seen.has(p.player_name)) return false;
+      seen.add(p.player_name);
+      return true;
+    });
+    filterStarterPlayers();
+    document.getElementById('starter-card-modal').style.display = 'flex';
+  }
+
+  function filterStarterPlayers() {
+    const q = document.getElementById('starter-search').value.toLowerCase();
+    const filtered = allPlayersList.filter(p => p.player_name.toLowerCase().includes(q));
+    const el = document.getElementById('starter-player-list');
+    el.innerHTML = filtered.map(p => `
+      <div class="team-item" onclick="claimStarterCard('${p.player_name}')">
+        <div>
+          <div class="team-name-display">${p.player_name}</div>
+          <div class="team-conf">${p.position||''} ${p.team_name||''}</div>
+        </div>
+        <button class="draft-btn">Pick</button>
+      </div>`).join('');
+  }
+
+  async function claimStarterCard(playerName) {
+    setError('starter-error', '');
+    const uid = starterUserId || currentUser?.id;
+    if (!uid) return;
+    // Get any card for this player (common preferred)
+    const { data: cards } = await supabase.from('player_cards').select('id, rarity').eq('player_name', playerName).order('rarity');
+    if (!cards?.length) { setError('starter-error', 'Player not found.'); return; }
+    const card = cards[0];
+    const { error } = await supabase.from('user_cards').insert({
+      user_id: uid, card_id: card.id, total_peels_earned: 0, locked_rarity: 'common'
+    });
+    if (error) { setError('starter-error', error.message); return; }
+    closeModal('starter-card-modal');
+    toast(`${playerName} added to your collection as Common! 🃏`);
+    if (currentUser) renderCardsPage();
   }
 
   // ─── Boot ─────────────────────────────────────────────────
