@@ -278,14 +278,6 @@
         <option value="Pitcher">Pitcher</option>
       </select>
     </div>
-    <div class="input-group"><label>Rarity</label>
-      <select id="cc-rarity">
-        <option value="common">Common (1x multiplier)</option>
-        <option value="rare">Rare (2x multiplier)</option>
-        <option value="legendary">Legendary (3x multiplier)</option>
-        <option value="mythic">Mythic (5x multiplier)</option>
-      </select>
-    </div>
     <div class="input-group"><label>Packs (select multiple)</label>
       <select id="cc-pack-select" multiple style="height:100px"></select>
     </div>
@@ -919,32 +911,27 @@
     const player = document.getElementById('cc-player').value.trim();
     const team = document.getElementById('cc-team').value.trim();
     const position = document.getElementById('cc-position').value;
-    const rarity = document.getElementById('cc-rarity').value;
     const packSel = document.getElementById('cc-pack-select');
     const packIds = Array.from(packSel.selectedOptions).map(o => o.value);
     if (!player) { setError('cc-error', 'Enter player name.'); return; }
     if (!packIds.length) { setError('cc-error', 'Select at least one pack.'); return; }
-    // Insert one card record, then link to multiple packs
+    // Insert one card record (rarity no longer fixed - determined at pull time)
     const { data: card, error } = await supabase.from('player_cards').insert({ 
-      player_name: player, team_name: team, rarity, position: position||null, pack_id: packIds[0]
+      player_name: player, team_name: team, position: position||null, pack_id: packIds[0]
     }).select().single();
     if (error) { setError('cc-error', error.message); return; }
-    // Add to additional packs via junction table
-    if (packIds.length > 1) {
-      const extras = packIds.slice(1).map(pid => ({ card_id: card.id, pack_id: pid }));
-      await supabase.from('card_pack_members').insert(extras);
-    }
-    // Also add primary pack to junction table
-    await supabase.from('card_pack_members').insert({ card_id: card.id, pack_id: packIds[0] });
+    // Add to all packs via junction table
+    const allPackLinks = packIds.map(pid => ({ card_id: card.id, pack_id: pid }));
+    await supabase.from('card_pack_members').insert(allPackLinks);
     closeModal('create-card-modal');
     toast('Card created in ' + packIds.length + ' pack(s)! 🃏');
     renderAdmin();
   }
 
   async function showPlayerStats() {
-    const { data: cards } = await supabase.from('player_cards').select('id, player_name, team_name, rarity').order('player_name');
+    const { data: cards } = await supabase.from('player_cards').select('id, player_name, team_name, position').order('player_name');
     const sel = document.getElementById('ps-player-select');
-    sel.innerHTML = (cards||[]).map(c => `<option value="${c.id}">${c.player_name} (${c.rarity}) — ${c.team_name||''}</option>`).join('');
+    sel.innerHTML = (cards||[]).map(c => `<option value="${c.id}">${c.player_name}${c.position?' ('+c.position+')':''} — ${c.team_name||''}</option>`).join('');
     document.getElementById('player-stats-modal').style.display = 'flex';
   }
 
