@@ -197,6 +197,16 @@
     <div class="card" style="margin-top:12px"><h3 style="color:#FFD700;margin-bottom:12px">Resolve Games</h3><div id="admin-games-list"></div></div>
     <div class="card" style="margin-top:12px"><h3 style="color:#FFD700;margin-bottom:12px">Manage Players</h3><div id="admin-players-list"></div></div>
     <div class="card" style="margin-top:12px">
+      <h3 style="color:#FFD700;margin-bottom:12px">🤖 Bot Accounts</h3>
+      <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px">Add fake names to the leaderboard to make the app feel more active.</p>
+      <div class="grid2">
+        <div class="input-group"><label>Bot Name</label><input id="bot-name" placeholder="e.g. Slugger99"/></div>
+        <div class="input-group"><label>Peels</label><input id="bot-peels" type="number" placeholder="150" value="100"/></div>
+      </div>
+      <button class="admin-btn" onclick="addBot()">+ Add Bot</button>
+      <div id="admin-bots-list" style="margin-top:12px"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
       <h3 style="color:#FFD700;margin-bottom:12px">🎁 Card Packs</h3>
       <button class="admin-btn" onclick="showCreatePack()" style="margin-bottom:10px">+ Create Pack</button>
       <div id="admin-packs-list"></div>
@@ -434,7 +444,7 @@
     const btn = document.getElementById('feedback-submit-btn');
     btn.textContent = 'Sending...'; btn.disabled = true;
     try {
-      const res = await fetch('https://formspree.io/f/mojzgzlk', {
+      const res = await fetch('https://formspree.io/f/mojzgzlkD', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
@@ -454,6 +464,76 @@
       setError('feedback-error', 'Error: ' + e.message);
     }
     btn.textContent = 'Send Feedback'; btn.disabled = false;
+  }
+
+  // ─── Bot accounts ───────────────────────────────────────────
+  async function addBot() {
+    const name = document.getElementById('bot-name').value.trim();
+    const peels = parseInt(document.getElementById('bot-peels').value) || 100;
+    if (!name) { toast('Enter a bot name.'); return; }
+    const fakeId = crypto.randomUUID ? crypto.randomUUID() : 'bot-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    const { error } = await supabase.from('profiles').insert({
+      id: fakeId, username: name, peels, is_admin: false, is_bot: true
+    });
+    if (error) { toast('Error adding bot: ' + error.message); return; }
+    document.getElementById('bot-name').value = '';
+    document.getElementById('bot-peels').value = '100';
+    toast('Bot added! 🤖');
+    renderAdminBots();
+    renderLeaderboard();
+  }
+
+  async function renderAdminBots() {
+    const el = document.getElementById('admin-bots-list');
+    if (!el) return;
+    const { data: bots } = await supabase.from('profiles').select('id, username, peels').eq('is_bot', true).order('username');
+    if (!bots?.length) { el.innerHTML = '<div style="font-size:13px;color:rgba(255,255,255,0.3);padding:8px 0">No bots yet</div>'; return; }
+    el.innerHTML = bots.map(b => `
+      <div class="admin-game-item">
+        <div class="admin-game-info"><strong>${escapeHtml(b.username)}</strong> <span style="color:rgba(255,255,255,0.4);font-size:12px">🤖 bot</span></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'Bangers',cursive;color:#FFD700;font-size:16px">${Math.round(b.peels)} 🍌</span>
+          <button class="result-btn bot-adjust-btn" data-bot-id="${b.id}" data-bot-name="${escapeAttr(b.username)}" style="padding:5px 10px;font-size:12px">Adjust</button>
+          <button class="result-btn bot-delete-btn" data-bot-id="${b.id}" style="padding:5px 10px;font-size:12px;color:#ff7675;border-color:rgba(255,118,117,0.4)">Remove</button>
+        </div>
+      </div>`).join('');
+  }
+
+  document.addEventListener('click', function(e) {
+    const adjustBtn = e.target.closest('.bot-adjust-btn');
+    if (adjustBtn) {
+      const newVal = prompt('Set new Peels amount for ' + adjustBtn.dataset.botName + ':');
+      if (newVal !== null && !isNaN(parseFloat(newVal))) {
+        supabase.from('profiles').update({ peels: Math.round(parseFloat(newVal)) }).eq('id', adjustBtn.dataset.botId).then(() => {
+          toast('Bot updated! 🤖');
+          renderAdminBots();
+          renderLeaderboard();
+        });
+      }
+      return;
+    }
+    const deleteBtn = e.target.closest('.bot-delete-btn');
+    if (deleteBtn) {
+      if (confirm('Remove this bot from the leaderboard?')) {
+        supabase.from('profiles').delete().eq('id', deleteBtn.dataset.botId).then(() => {
+          toast('Bot removed.');
+          renderAdminBots();
+          renderLeaderboard();
+        });
+      }
+      return;
+    }
+  });
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+  function escapeAttr(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
   function showPage(p, btn) {
@@ -748,7 +828,7 @@
   }
 
   async function renderAdmin() {
-    await Promise.all([renderAdminGames(), renderAdminPlayers()]);
+    await Promise.all([renderAdminGames(), renderAdminPlayers(), renderAdminBots()]);
     renderAdminCardsSection();
   }
 
@@ -774,17 +854,6 @@
             </div>`
           : `<span style="font-size:12px;color:rgba(255,255,255,0.3)">Winner: ${escapeHtml(g.winner) || '—'}</span>`}
       </div>`).join('');
-  }
-
-  function escapeHtml(str) {
-    if (str === null || str === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-  function escapeAttr(str) {
-    if (str === null || str === undefined) return '';
-    return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   }
 
   // Event delegation for admin games list - survives re-renders, no inline onclick issues
