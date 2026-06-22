@@ -153,11 +153,10 @@
 <div id="page-mybets" class="page"><h2>My Bets</h2><div id="my-bets-stats" class="grid2" style="margin-bottom:14px"></div><div class="card" id="my-bets-list"></div></div>
 <div id="page-leaderboard" class="page"><h2>Leaderboard</h2><div class="card" id="lb-list"><div class="loading"><span class="spinner"></span>Loading...</div></div></div>
 <div id="page-cards" class="page">
-<div class="card" style="text-align:center;padding:48px 24px">
-<div style="font-size:48px;margin-bottom:12px">🃏</div>
-<h2 style="margin-bottom:8px">Coming Soon!</h2>
-<p style="color:rgba(255,255,255,0.5);font-size:14px;max-width:320px;margin:0 auto">Player cards are being upgraded behind the scenes. Check back soon for packs, collections, and more!</p>
-</div>
+<h2>My Cards</h2>
+<div id="my-cards-list"></div>
+<h2 style="margin-top:16px">Card Packs</h2>
+<div id="packs-list"></div>
 </div>
 <div id="page-feedback" class="page">
 <h2>Send Feedback</h2>
@@ -1047,8 +1046,6 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  }
 
  async function renderCardsPage() {
- // Cards feature paused - coming soon placeholder is shown instead
- return;
  // Check for unseen earnings first
  const { data: unseen } = await supabase.from('card_earnings_log')
  .select('*, player_cards(player_name)')
