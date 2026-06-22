@@ -228,12 +228,12 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
 <button class="admin-btn" onclick="showPlayerStats()">Enter Stats & Pay Out</button>
 </div>
 <div class="card" style="margin-top:12px">
-<h3 style="color:#60a5fa;margin-bottom:12px">[TEST] Banana Ball API Sync</h3>
-<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px">Test the automatic stats lookup before going live.</p>
-<div class="input-group"><label>Player Name (First Last)</label><input id="api-test-player" placeholder="e.g. Jackie Bradley Jr."/></div>
-<div class="input-group"><label>Game Date</label><input id="api-test-date" type="date"/></div>
-<button class="admin-btn" onclick="testApiSync()" style="background:#60a5fa">Test Sync</button>
-<pre id="api-test-result" style="margin-top:12px;background:rgba(0,0,0,0.3);padding:12px;border-radius:10px;font-size:12px;white-space:pre-wrap;max-height:300px;overflow-y:auto;color:#9fdfff"></pre>
+<h3 style="color:#60a5fa;margin-bottom:12px">Daily Stats Sync</h3>
+<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px">Checks every player card against today's Banana Ball stats and pays out card holders automatically.</p>
+<div class="input-group"><label>Date to Sync</label><input id="sync-date" type="date"/></div>
+<button class="admin-btn" onclick="runDailySync()" style="background:#60a5fa">Sync This Date</button>
+<div id="sync-progress" style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.5)"></div>
+<div id="sync-results" style="margin-top:8px"></div>
 </div>
 </div>
 </div>
@@ -1188,26 +1188,53 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  renderAdmin();
  }
 
- async function testApiSync() {
- const playerName = document.getElementById('api-test-player').value.trim();
- const gameDate = document.getElementById('api-test-date').value;
- const resultEl = document.getElementById('api-test-result');
- if (!playerName || !gameDate) { resultEl.textContent ='Please enter both player name and date.'; return; }
- resultEl.textContent ='Calling API...';
+ async function runDailySync() {
+ const gameDate = document.getElementById('sync-date').value;
+ const progressEl = document.getElementById('sync-progress');
+ const resultsEl = document.getElementById('sync-results');
+ if (!gameDate) { progressEl.textContent ='Please select a date.'; return; }
+
+ const{ data: cards } = await supabase.from('player_cards').select('id, player_name').order('player_name');
+ if (!cards?.length) { progressEl.textContent ='No player cards found.'; return; }
+
+ resultsEl.innerHTML ='';
+ let played = 0, paid = 0, skipped = 0, errors = 0, totalPeelsOut = 0;
+
+ for (let i = 0; i < cards.length; i++) {
+ const card = cards[i];
+ progressEl.textContent = `Checking ${i + 1} of ${cards.length}: ${card.player_name}...`;
  try {
  const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-banana-stats`, {
  method:'POST',
- headers: {
-'Content-Type':'application/json',
-'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
- },
- body: JSON.stringify({ player_name: playerName, game_date: gameDate })
+ headers: {'Content-Type':'application/json','Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+ body: JSON.stringify({ player_name: card.player_name, game_date: gameDate })
  });
  const data = await res.json();
- resultEl.textContent = JSON.stringify(data, null, 2);
- } catch(e) {
- resultEl.textContent ='Error: ' + e.message;
+
+ if (data.error) {
+ errors++;
+ } else if (!data.played) {
+ skipped++;
+ } else if (data.already_synced) {
+ skipped++;
+ } else {
+ played++;
+ if (data.holders_paid > 0) {
+ paid += data.holders_paid;
+ totalPeelsOut += data.total_peels_paid || 0;
+ const row = document.createElement('div');
+ row.style.cssText ='padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px;font-size:13px';
+ row.innerHTML = `<strong style="color:#FFD700">${card.player_name}</strong> — ${data.points.total} pts → ${data.holders_paid} holder(s) paid, ${data.total_peels_paid} Peels total`;
+ resultsEl.appendChild(row);
  }
+ }
+ } catch(e) {
+ errors++;
+ }
+ }
+
+ progressEl.innerHTML = `<strong style="color:#6fcf97">Sync complete!</strong> ${played} players played, ${paid} card payouts, ${totalPeelsOut} total Peels distributed. ${skipped} skipped (no game/already synced), ${errors} errors.`;
+ if (currentUser) refreshHeader();
  }
 
  async function showPlayerStats() {
