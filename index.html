@@ -1127,11 +1127,17 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  packPurchaseInProgress = false;
  return;
  }
+ if (!result.card) {
+ toast('Pack opened but card data was missing. Refresh to see it.');
+ packPurchaseInProgress = false;
+ return;
+ }
  // Update local peels
  currentProfile.peels = result.new_peels;
  await refreshHeader();
- // Show reveal animation
- document.getElementById('card-reveal-box').innerHTML = cardHTML(result.card);
+ // Show reveal animation - use the rolled rarity returned from the edge function
+ const revealRarity = result.card.rarity || result.rarity ||'common';
+ document.getElementById('card-reveal-box').innerHTML = cardHTML(result.card, true, revealRarity);
  document.getElementById('card-reveal-overlay').style.display ='flex';
  } catch(e) {
  toast('Error:' + e.message);
