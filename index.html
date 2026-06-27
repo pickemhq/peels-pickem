@@ -144,6 +144,7 @@
 <button class="nav-btn active" id="nav-games" onclick="showPage('games',this)">Games</button>
 <button class="nav-btn" id="nav-mybets" onclick="showPage('mybets',this)">My Bets</button>
 <button class="nav-btn" id="nav-leaderboard" onclick="showPage('leaderboard',this)">Board</button>
+<button class="nav-btn" id="nav-bbgames" onclick="showPage('bbgames',this)">Games</button>
 <button class="nav-btn" id="nav-cards" onclick="showPage('cards',this)">🃏 Cards</button>
 <button class="nav-btn" id="nav-feedback" onclick="showPage('feedback',this)">Feedback</button>
 <button class="nav-btn" id="nav-admin" style="display:none" onclick="showPage('admin',this)">Admin</button>
@@ -152,6 +153,14 @@
 <div id="page-games" class="page active"><h2>Active Games</h2><div id="games-list"><div class="loading"><span class="spinner"></span>Loading games...</div></div></div>
 <div id="page-mybets" class="page"><h2>My Bets</h2><div id="my-bets-stats" class="grid2" style="margin-bottom:14px"></div><div class="card" id="my-bets-list"></div></div>
 <div id="page-leaderboard" class="page"><h2>Leaderboard</h2><div class="card" id="lb-list"><div class="loading"><span class="spinner"></span>Loading...</div></div></div>
+<div id="page-bbgames" class="page">
+<h2>Banana Ball Games</h2>
+<div class="card">
+<div class="input-group"><label>Date</label><input id="bbgames-date" type="date" onchange="loadBBGames()"/></div>
+</div>
+<div id="bbgames-list"></div>
+<div id="boxscore-detail" style="display:none"></div>
+</div>
 <div id="page-cards" class="page">
 <h2>My Cards</h2>
 <div id="my-cards-list"></div>
@@ -174,6 +183,13 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
 </div>
 <div id="page-admin" class="page">
 <h2>Admin Panel</h2>
+<div class="card">
+<h3 style="color:#60a5fa;margin-bottom:12px">Import from Schedule</h3>
+<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px">Pull upcoming matchups straight from the Banana Ball schedule.</p>
+<div class="input-group"><label>Date</label><input id="schedule-date" type="date"/></div>
+<button class="admin-btn" onclick="findUpcomingGames()" style="background:#60a5fa">Find Scheduled Games</button>
+<div id="upcoming-games-list" style="margin-top:12px"></div>
+</div>
 <div class="card">
 <h3 style="color:#FFD700;margin-bottom:12px">Add New Game</h3>
 <div class="grid2">
@@ -240,12 +256,11 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
 <button class="admin-btn" onclick="showPlayerStats()">Enter Stats & Pay Out</button>
 </div>
 <div class="card" style="margin-top:12px">
-<h3 style="color:#60a5fa;margin-bottom:12px">Daily Stats Sync</h3>
-<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px">Checks every player card against today's Banana Ball stats and pays out card holders automatically.</p>
-<div class="input-group"><label>Date to Sync</label><input id="sync-date" type="date"/></div>
-<button class="admin-btn" onclick="runDailySync()" style="background:#60a5fa">Sync This Date</button>
-<div id="sync-progress" style="margin-top:12px;font-size:13px;color:rgba(255,255,255,0.5)"></div>
-<div id="sync-results" style="margin-top:8px"></div>
+<h3 style="color:#60a5fa;margin-bottom:12px">Game Stats Sync</h3>
+<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px">Find games for a date, then sync each one to calculate and pay out card holders automatically.</p>
+<div class="input-group"><label>Date</label><input id="sync-date" type="date"/></div>
+<button class="admin-btn" onclick="findGamesForDate()" style="background:#60a5fa">Find Games</button>
+<div id="games-found-list" style="margin-top:12px"></div>
 </div>
 </div>
 </div>
@@ -564,7 +579,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  document.querySelectorAll('.nav-btn').forEach(x =>x.classList.remove('active'));
  document.getElementById('page-' + p).classList.add('active');
  if (btn) btn.classList.add('active');
- ({ games: renderGames, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage })[p]?.();
+ ({ games: renderGames, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, bbgames: renderBBGamesPage })[p]?.();
  }
 
  // ─── Auth ─────────────────────────────────────────────────
@@ -1054,6 +1069,83 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
 </div>`;
  }
 
+ // ─── Banana Ball Games Viewer ──────────────────────────────────
+ function renderBBGamesPage() {
+ const dateEl = document.getElementById('bbgames-date');
+ if (!dateEl.value) {
+ const today = new Date().toISOString().slice(0,10);
+ dateEl.value = today;
+ }
+ document.getElementById('boxscore-detail').style.display ='none';
+ document.getElementById('bbgames-list').style.display ='block';
+ loadBBGames();
+ }
+
+ async function loadBBGames() {
+ const gameDate = document.getElementById('bbgames-date').value;
+ const listEl = document.getElementById('bbgames-list');
+ if (!gameDate) return;
+ listEl.innerHTML ='<div class="loading"><span class="spinner"></span>Loading games...</div>';
+ try {
+ const res = await fetch(`https://banana-stats-pages-seven.vercel.app/api/stats/games?dateFrom=${gameDate}&dateTo=${gameDate}`);
+ const games = await res.json();
+ if (!games?.length) { listEl.innerHTML ='<div class="no-games">No games on this date.</div>'; return; }
+ listEl.innerHTML = games.map((g) => `
+ <div class="matchup-card" style="cursor:pointer" onclick="showBoxScore('${g.id}')">
+ <div class="matchup-teams">
+ <div class="matchup-team">
+ <div class="matchup-name">${escapeHtml(g.away_team.name)}</div>
+ <div class="matchup-score">${g.away_team.runs}</div>
+ </div>
+ <div class="matchup-vs">@</div>
+ <div class="matchup-team">
+ <div class="matchup-name">${escapeHtml(g.home_team.name)}</div>
+ <div class="matchup-score">${g.home_team.runs}</div>
+ </div>
+ </div>
+ <div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px">${g.status==='final'?'Final':g.status} · Tap for box score</div>
+ </div>`).join('');
+ } catch(e) {
+ listEl.innerHTML = `<div class="no-games">Error loading games: ${e.message}</div>`;
+ }
+ }
+
+ async function showBoxScore(gameId) {
+ const detailEl = document.getElementById('boxscore-detail');
+ document.getElementById('bbgames-list').style.display ='none';
+ detailEl.style.display ='block';
+ detailEl.innerHTML ='<div class="loading"><span class="spinner"></span>Loading box score...</div>';
+ try {
+ const res = await fetch(`https://banana-stats-pages-seven.vercel.app/api/directus-items/box-score?gameId=${gameId}`);
+ const game = await res.json();
+
+ const teamBlock = (team) => {
+ const battersRows = (team.batters||[]).filter((b) => b.AB > 0 || b.R > 0 || b.H > 0).map((b) => `
+ <div class="stat-row"><span class="stat-label">${escapeHtml(b.name)}</span><span class="stat-val">${b.H}-${b.AB}, ${b.RBI} RBI${b.K?', '+b.K+' K':''}</span></div>`).join('');
+ const pitcherRows = (team.pitchers||[]).map((p) => `
+ <div class="stat-row"><span class="stat-label">${escapeHtml(p.name)}</span><span class="stat-val">${p.IP} IP, ${p.ER} ER, ${p.K} K</span></div>`).join('');
+ return `<div class="card" style="margin-bottom:10px">
+ <h3 style="color:#FFD700">${escapeHtml(team.teamName)} — ${team.prh.runs} runs, ${team.prh.hits} hits</h3>
+ <div style="font-size:12px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:6px">Batting</div>
+ ${battersRows||'<div style="font-size:13px;color:rgba(255,255,255,0.3)">No batting data</div>'}
+ <div style="font-size:12px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin:10px 0 6px">Pitching</div>
+ ${pitcherRows||'<div style="font-size:13px;color:rgba(255,255,255,0.3)">No pitching data</div>'}
+ </div>`;
+ };
+
+ detailEl.innerHTML = `
+ <button class="btn-blue" style="margin-bottom:12px" onclick="renderBBGamesPage()">← Back to Games</button>
+ <div class="card" style="text-align:center;margin-bottom:12px">
+ <div style="font-size:12px;color:rgba(255,255,255,0.4)">${game.venue?.name||''} · ${game.gameDate}</div>
+ </div>
+ ${game.teams.map(teamBlock).join('')}
+ ${game.notes?`<div class="card" style="font-size:13px;color:rgba(255,255,255,0.6);white-space:pre-wrap">${escapeHtml(game.notes)}</div>`:''}
+ `;
+ } catch(e) {
+ detailEl.innerHTML = `<div class="no-games">Error loading box score: ${e.message}</div><button class="btn-blue" onclick="renderBBGamesPage()">← Back</button>`;
+ }
+ }
+
  async function renderCardsPage() {
  // Check for unseen earnings first
  const { data: unseen } = await supabase.from('card_earnings_log')
@@ -1197,53 +1289,110 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  renderAdmin();
  }
 
- async function runDailySync() {
+ async function findUpcomingGames() {
+ const date = document.getElementById('schedule-date').value;
+ const listEl = document.getElementById('upcoming-games-list');
+ if (!date) { listEl.innerHTML ='<div style="font-size:13px;color:rgba(255,255,255,0.4)">Pick a date first.</div>'; return; }
+ listEl.innerHTML ='<div class="loading"><span class="spinner"></span>Loading schedule...</div>';
+ try {
+ const res = await fetch(`https://banana-stats-pages-seven.vercel.app/api/stats/games?dateFrom=${date}&dateTo=${date}`);
+ const games = await res.json();
+ if (!games?.length) { listEl.innerHTML ='<div style="font-size:13px;color:rgba(255,255,255,0.4)">No games found for that date.</div>'; return; }
+ listEl.innerHTML = games.map((g, i) => {
+ const isScheduled = g.status ==='scheduled';
+ const dt = `${g.date}T${g.time}`;
+ return `<div class="admin-game-item">
+ <div class="admin-game-info">
+ <strong>${escapeHtml(g.away_team.name)} @ ${escapeHtml(g.home_team.name)}</strong>
+ <small>${g.time} ·${g.status}${!isScheduled?' (already played)':''}</small>
+ </div>
+ ${isScheduled ? `<button class="result-btn" style="color:#60a5fa;border-color:rgba(96,165,250,0.4)" onclick='importGame(${JSON.stringify(g.away_team.name)}, ${JSON.stringify(g.home_team.name)}, ${JSON.stringify(dt)})'>Import</button>` :'<span style="font-size:12px;color:rgba(255,255,255,0.3)">Already played</span>'}
+ </div>`;
+ }).join('');
+ } catch(e) {
+ listEl.innerHTML ='<div style="font-size:13px;color:#ff7675">Error: ' + e.message +'</div>';
+ }
+ }
+
+ function importGame(awayTeam, homeTeam, datetime) {
+ document.getElementById('a-t1').value = awayTeam;
+ document.getElementById('a-t2').value = homeTeam;
+ // Convert to local datetime-local format
+ const d = new Date(datetime);
+ document.getElementById('a-date').value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+ document.getElementById('a-wp1').value ='';
+ document.getElementById('a-wp2').value ='';
+ toast('Imported! Now set the win percentages below.');
+ document.getElementById('a-t1').scrollIntoView({behavior:'smooth', block:'center'});
+ }
+
+ async function findGamesForDate() {
  const gameDate = document.getElementById('sync-date').value;
- const progressEl = document.getElementById('sync-progress');
- const resultsEl = document.getElementById('sync-results');
- if (!gameDate) { progressEl.textContent ='Please select a date.'; return; }
+ const listEl = document.getElementById('games-found-list');
+ if (!gameDate) { listEl.innerHTML ='<p style="color:#ff7675;font-size:13px">Please select a date.</p>'; return; }
+ listEl.innerHTML ='<div class="loading"><span class="spinner"></span>Looking up games...</div>';
 
- const{ data: cards } = await supabase.from('player_cards').select('id, player_name').order('player_name');
- if (!cards?.length) { progressEl.textContent ='No player cards found.'; return; }
+ try {
+ const res = await fetch(`https://banana-stats-pages-seven.vercel.app/api/stats/games?dateFrom=${gameDate}&dateTo=${gameDate}`);
+ const games = await res.json();
+ if (!games?.length) { listEl.innerHTML ='<p style="color:rgba(255,255,255,0.4);font-size:13px">No games found for this date.</p>'; return; }
 
- resultsEl.innerHTML ='';
- let played = 0, paid = 0, skipped = 0, errors = 0, totalPeelsOut = 0;
+ // Check which games are already synced (any card_stat_log with this game_id)
+ const gameIds = games.map((g) => g.id);
+ const { data: existingLogs } = await supabase.from('card_stat_logs').select('game_id').in('game_id', gameIds);
+ const syncedSet = new Set((existingLogs||[]).map((l) => l.game_id));
 
- for (let i = 0; i < cards.length; i++) {
- const card = cards[i];
- progressEl.textContent = `Checking ${i + 1} of ${cards.length}: ${card.player_name}...`;
+ listEl.innerHTML = games.map((g) => {
+ const isSynced = syncedSet.has(g.id);
+ return `<div class="admin-game-item" style="flex-wrap:wrap">
+ <div class="admin-game-info">
+ <strong>${escapeHtml(g.away_team.name)} @ ${escapeHtml(g.home_team.name)}</strong>
+ <small>${g.away_team.runs}-${g.home_team.runs} · ${g.status}${isSynced?' <span class="closed-tag">synced</span>':''}</small>
+ </div>
+ <button class="result-btn sync-game-btn" data-game-id="${g.id}" style="color:#60a5fa;border-color:rgba(96,165,250,0.4)" ${g.status!=='final'?'disabled':''}>
+ ${isSynced?'Re-sync':'Sync This Game'}
+ </button>
+ </div>`;
+ }).join('');
+ } catch(e) {
+ listEl.innerHTML = `<p style="color:#ff7675;font-size:13px">Error: ${e.message}</p>`;
+ }
+ }
+
+ document.addEventListener('click', function(e) {
+ const syncBtn = e.target.closest('.sync-game-btn');
+ if (syncBtn) {
+ syncGame(syncBtn.dataset.gameId, syncBtn);
+ }
+ });
+
+ async function syncGame(gameId, btn) {
+ const originalText = btn.textContent;
+ btn.textContent ='Syncing...'; btn.disabled = true;
  try {
  const res = await fetch(`${SUPABASE_URL}/functions/v1/sync-banana-stats`, {
  method:'POST',
  headers: {'Content-Type':'application/json','Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
- body: JSON.stringify({ player_name: card.player_name, game_date: gameDate })
+ body: JSON.stringify({ game_id: gameId })
  });
  const data = await res.json();
-
  if (data.error) {
- errors++;
- } else if (!data.played) {
- skipped++;
- } else if (data.already_synced) {
- skipped++;
- } else {
- played++;
- if (data.holders_paid > 0) {
- paid += data.holders_paid;
- totalPeelsOut += data.total_peels_paid || 0;
- const row = document.createElement('div');
- row.style.cssText ='padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:6px;font-size:13px';
- row.innerHTML = `<strong style="color:#FFD700">${card.player_name}</strong> — ${data.points.total} pts → ${data.holders_paid} holder(s) paid, ${data.total_peels_paid} Peels total`;
- resultsEl.appendChild(row);
+ toast('Error:' + data.error);
+ btn.textContent = originalText; btn.disabled = false;
+ return;
  }
+ if (!data.played) {
+ toast(data.message ||'Game not final yet.');
+ btn.textContent = originalText; btn.disabled = false;
+ return;
  }
- } catch(e) {
- errors++;
- }
- }
-
- progressEl.innerHTML = `<strong style="color:#6fcf97">Sync complete!</strong> ${played} players played, ${paid} card payouts, ${totalPeelsOut} total Peels distributed. ${skipped} skipped (no game/already synced), ${errors} errors.`;
+ toast(`Synced! ${data.players_processed} players, ${data.holders_paid} payouts, ${data.total_peels_paid} Peels distributed.`);
+ btn.textContent ='Synced ✓';
  if (currentUser) refreshHeader();
+ } catch(e) {
+ toast('Error:' + e.message);
+ btn.textContent = originalText; btn.disabled = false;
+ }
  }
 
  async function showPlayerStats() {
