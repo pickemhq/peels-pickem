@@ -196,6 +196,8 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
 <div class="input-group"><label>Team 1 Name</label><input id="a-t1" placeholder="Savannah Bananas" oninput="updateOddsPreview()"/></div>
 <div class="input-group"><label>Team 2 Name</label><input id="a-t2" placeholder="Party Animals" oninput="updateOddsPreview()"/></div>
 </div>
+<button class="admin-btn" onclick="calculateWinPct()" style="background:#60a5fa;margin-bottom:12px">Calculate Win % from Season Data</button>
+<div id="calc-status" style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px"></div>
 <div class="grid2">
 <div class="input-group">
 <label>Team 1 Win %</label>
@@ -827,6 +829,67 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  }
 
  // ─── Admin ────────────────────────────────────────────────
+ async function calculateWinPct() {
+ const t1 = document.getElementById('a-t1').value.trim();
+ const t2 = document.getElementById('a-t2').value.trim();
+ const statusEl = document.getElementById('calc-status');
+ if (!t1 || !t2) { statusEl.textContent ='Enter both team names first.'; statusEl.style.color ='#ff7675'; return; }
+ statusEl.textContent ='Pulling season results...'; statusEl.style.color ='rgba(255,255,255,0.4)';
+
+ try {
+ // Pull the whole season's games (wide date range covers full season safely)
+ const url = `https://banana-stats-pages-seven.vercel.app/api/stats/games?dateFrom=2026-01-01&dateTo=2026-12-31`;
+ const res = await fetch(`${SUPABASE_URL}/functions/v1/banana-proxy?url=` + encodeURIComponent(url), { headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } });
+ const games = await res.json();
+ const finals = (games||[]).filter(g => g.status ==='final' && g.home_team?.points!=null && g.away_team?.points!=null);
+
+ if (!finals.length) { statusEl.textContent ='No completed games found to calculate from.'; statusEl.style.color ='#ff7675'; return; }
+
+ function record(teamName, opponentName=null) {
+ let wins = 0, total = 0;
+ for (const g of finals) {
+ const home = g.home_team.name, away = g.away_team.name;
+ if (home !== teamName && away !== teamName) continue;
+ if (opponentName && home !== opponentName && away !== opponentName) continue;
+ const isHome = home === teamName;
+ const myPts = isHome ? g.home_team.points : g.away_team.points;
+ const oppPts = isHome ? g.away_team.points : g.home_team.points;
+ total++;
+ if (myPts > oppPts) wins++;
+ }
+ return total > 0 ? wins / total : 0.5; // default to 50% if no data
+ }
+
+ const t1VsT2 = record(t1, t2);
+ const t1VsLeague = record(t1);
+ const t2VsT1 = record(t2, t1);
+ const t2VsLeague = record(t2);
+
+ const t1Rating = (t1VsT2 * 0.55) + (t1VsLeague * 0.45);
+ const t2Rating = (t2VsT1 * 0.55) + (t2VsLeague * 0.45);
+
+ let t1Pct, t2Pct;
+ if (t1Rating + t2Rating === 0) {
+ t1Pct = 50; t2Pct = 50;
+ } else {
+ t1Pct = Math.round((t1Rating / (t1Rating + t2Rating)) * 100);
+ t2Pct = 100 - t1Pct;
+ }
+ t1Pct = Math.max(1, Math.min(99, t1Pct));
+ t2Pct = 100 - t1Pct;
+
+ document.getElementById('a-wp1').value = t1Pct;
+ document.getElementById('a-wp2').value = t2Pct;
+ updateOddsPreview();
+
+ statusEl.innerHTML = `Calculated from${finals.length} season games. ${escapeHtml(t1)} vs${escapeHtml(t2)}: ${(t1VsT2*100).toFixed(0)}% · League: ${(t1VsLeague*100).toFixed(0)}%`;
+ statusEl.style.color ='#6fcf97';
+ } catch(e) {
+ statusEl.textContent ='Error: ' + e.message;
+ statusEl.style.color ='#ff7675';
+ }
+ }
+
  function syncWinPct(changed) {
  const v = parseFloat(document.getElementById('a-wp' + changed).value);
  if (!isNaN(v) && v >= 1 && v<= 99) document.getElementById('a-wp' + (changed === 1 ? 2 : 1)).value = Math.max(1, Math.min(99, 100 - v));
@@ -1104,12 +1167,12 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  <div class="matchup-teams">
  <div class="matchup-team">
  <div class="matchup-name">${escapeHtml(g.away_team.name)}</div>
- <div class="matchup-score">${g.away_team.runs}</div>
+ <div class="matchup-score">${g.away_team.points ?? '—'}</div>
  </div>
  <div class="matchup-vs">@</div>
  <div class="matchup-team">
  <div class="matchup-name">${escapeHtml(g.home_team.name)}</div>
- <div class="matchup-score">${g.home_team.runs}</div>
+ <div class="matchup-score">${g.home_team.points ?? '—'}</div>
  </div>
  </div>
  <div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px">${g.status==='final'?'Final':g.status} · Tap for box score</div>
@@ -1134,7 +1197,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  const pitcherRows = (team.pitchers||[]).map((p) => `
  <div class="stat-row"><span class="stat-label">${escapeHtml(p.name)}</span><span class="stat-val">${p.IP} IP, ${p.ER} ER, ${p.K} K</span></div>`).join('');
  return `<div class="card" style="margin-bottom:10px">
- <h3 style="color:#FFD700">${escapeHtml(team.teamName)} — ${team.prh.runs} runs, ${team.prh.hits} hits</h3>
+ <h3 style="color:#FFD700">${escapeHtml(team.teamName)} — ${team.prh.points_total} pts (${team.prh.runs} runs, ${team.prh.hits} hits)</h3>
  <div style="font-size:12px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:6px">Batting</div>
  ${battersRows||'<div style="font-size:13px;color:rgba(255,255,255,0.3)">No batting data</div>'}
  <div style="font-size:12px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin:10px 0 6px">Pitching</div>
@@ -1356,7 +1419,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#FFD
  return `<div class="admin-game-item" style="flex-wrap:wrap">
  <div class="admin-game-info">
  <strong>${escapeHtml(g.away_team.name)} @ ${escapeHtml(g.home_team.name)}</strong>
- <small>${g.away_team.runs}-${g.home_team.runs} · ${g.status}${isSynced?' <span class="closed-tag">synced</span>':''}</small>
+ <small>${g.away_team.points ?? '—'}-${g.home_team.points ?? '—'} pts ·${g.status}${isSynced?' <span class="closed-tag">synced</span>':''}</small>
  </div>
  <button class="result-btn sync-game-btn" data-game-id="${g.id}" style="color:#60a5fa;border-color:rgba(96,165,250,0.4)" ${g.status!=='final'?'disabled':''}>
  ${isSynced?'Re-sync':'Sync This Game'}
