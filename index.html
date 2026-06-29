@@ -800,17 +800,41 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  return { wins, losses };
  }
 
- async function renderUnifiedGamesPage() {
+ async function renderUnifiedGamesPage(selectedDate) {
  const el = document.getElementById('page-games');
- el.innerHTML ='<h2>Games</h2><div id="games-list-unified"><div class="loading"><span class="spinner"></span>Loading games...</div></div>';
+ el.innerHTML = `<h2>Games</h2>
+ <div class="card" style="margin-bottom:12px">
+ <div class="input-group" style="margin-bottom:0"><label>Date</label><input id="games-date-filter" type="date" onchange="renderUnifiedGamesPage(this.value)"/></div>
+ </div>
+ <div id="games-list-unified"><div class="loading"><span class="spinner"></span>Loading games...</div></div>`;
  const listEl = document.getElementById('games-list-unified');
 
- const { data: games } = await supabase.from('games').select('*').order('created_at', { ascending: false });
+ const { data: games } = await supabase.from('games').select('*').order('game_date', { ascending: true });
  if (!games || !games.length) { listEl.innerHTML ='<div class="no-games">No games right now.<br>Check back soon!</div>'; return; }
+
+ // Determine which date to show: explicitly selected, or default to the most recent game's date
+ let dateToShow = selectedDate;
+ if (!dateToShow) {
+ // Prefer today's date if there are games today, otherwise the most recent/upcoming date
+ const todayStr = new Date().toISOString().slice(0,10);
+ const datesAvailable = [...new Set(games.map(g => g.game_date ? g.game_date.slice(0,10) : null).filter(Boolean))].sort();
+ if (datesAvailable.includes(todayStr)) {
+ dateToShow = todayStr;
+ } else {
+ // Find closest date to today (prefer upcoming, fallback to most recent past)
+ const future = datesAvailable.filter(d => d >= todayStr);
+ dateToShow = future.length ? future[0] : datesAvailable[datesAvailable.length - 1];
+ }
+ }
+ document.getElementById('games-date-filter').value = dateToShow || '';
+
+ const filtered = dateToShow ? games.filter(g => g.game_date && g.game_date.slice(0,10) === dateToShow) : games;
+
+ if (!filtered.length) { listEl.innerHTML ='<div class="no-games">No games on this date.</div>'; return; }
 
  const finals = await fetchLeagueRecords();
 
- listEl.innerHTML = games.map(g => {
+ listEl.innerHTML = filtered.map(g => {
  const r1 = teamRecord(finals, g.t1);
  const r2 = teamRecord(finals, g.t2);
  const isClosed = g.status ==='closed';
@@ -1315,16 +1339,53 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  const mult = RARITY_MULTIPLIER[rarity] || 1;
  const pts = earnedPeels !== null ? earnedPeels : (card.total_peels_earned || 0);
  const sellPrice = Math.round(200 * (mult / 5)); // sell value based on rarity
- return `<div class="player-card ${rarity}">
+ const clickAttr = card.id ? `onclick="openMyCardBreakdown('${card.id}','${escapeAttr(card.player_name)}')"` : '';
+ return `<div class="player-card ${rarity}" ${clickAttr} style="${card.id?'cursor:pointer':''}">
 <div class="card-rarity rarity-${rarity}">${rarity} ${rarity==='mythic'?'':rarity==='legendary'?'⭐':rarity==='rare'?'':'·'}</div>
 <div class="card-player">${card.player_name}</div>
 <div class="card-team" style="display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap">${card.position?`<span style="background:rgba(255,215,0,0.15);border:1px solid #f0dd80;border-radius:50px;padding:2px 10px;font-size:11px;font-weight:700;color:#9a8200">${card.position==='Pitcher'?' Pitcher':' Batter'}</span>`:''}<span style="font-size:12px;color:#6b6b78">${card.team_name||''}</span></div>
 <div class="card-pts">${pts}</div>
-<div class="card-pts-lbl">Peels earned</div>
+<div class="card-pts-lbl">Peels earned · tap for detail</div>
  ${showMult?`<div class="card-mult" style="color:${RARITY_COLOR[rarity]}">${mult}x multiplier</div>`:''}
- ${showSell&&userCardId&&rarity!=='mythic'?`<button onclick="upgradeCard('${userCardId}','${card.player_name}','${rarity}')" style="margin-top:6px;width:100%;background:rgba(255,215,0,0.15);border:1px solid #f0dd80;color:#9a8200;padding:6px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">⬆ Upgrade to ${RARITY_NEXT[rarity]||''} — ${UPGRADE_COST[rarity]||0}</button>`:''}
- ${showSell&&userCardId?`<button onclick="sellCard('${userCardId}','${card.player_name}',${sellPrice})" style="margin-top:4px;width:100%;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">Sell for ${sellPrice}</button>`:''}
+ ${showSell&&userCardId&&rarity!=='mythic'?`<button onclick="event.stopPropagation();upgradeCard('${userCardId}','${card.player_name}','${rarity}')" style="margin-top:6px;width:100%;background:rgba(255,215,0,0.15);border:1px solid #f0dd80;color:#9a8200;padding:6px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">⬆ Upgrade to ${RARITY_NEXT[rarity]||''} — ${UPGRADE_COST[rarity]||0}</button>`:''}
+ ${showSell&&userCardId?`<button onclick="event.stopPropagation();sellCard('${userCardId}','${card.player_name}',${sellPrice})" style="margin-top:4px;width:100%;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;padding:6px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;font-family:'DM Sans',sans-serif">Sell for ${sellPrice}</button>`:''}
 </div>`;
+ }
+
+ async function openMyCardBreakdown(cardId, playerName) {
+ const { data: logs } = await supabase.from('card_stat_logs')
+ .select('base_peels, notes, game_date, game_id, breakdown')
+ .eq('card_id', cardId)
+ .order('game_date', { ascending: false });
+
+ const rows = (logs||[]).map(l => {
+ const statLines = l.breakdown ? Object.entries(l.breakdown).filter(([k,v]) => v.count !== 0).map(([k,v]) =>
+ `<div style="display:flex;justify-content:space-between;font-size:12px;color:#6b6b78;padding-left:12px"><span>${k} × ${v.count}</span><span>${v.points>=0?'+':''}${v.points.toFixed(2)}</span></div>`
+ ).join('') : '';
+ return `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #f0f0f4">
+<div class="stat-row" style="border:none;padding-bottom:2px">
+<span class="stat-label" style="font-weight:700">${l.game_date||'Unknown date'}</span>
+<span class="stat-val" style="color:${l.base_peels>=0?'#1e8a4c':'#c0392b'};font-weight:700">${l.base_peels>=0?'+':''}${l.base_peels.toFixed(1)} pts</span>
+</div>
+${statLines}
+</div>`;
+ }).join('');
+
+ const totalPts = (logs||[]).reduce((sum,l) => sum + (l.base_peels||0), 0);
+
+ const modal = document.createElement('div');
+ modal.className ='modal-overlay';
+ modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+ modal.innerHTML = `
+<div class="modal-box" style="width:360px;max-height:80vh;overflow-y:auto">
+<h3>${escapeHtml(playerName)}</h3>
+<p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Points earned per game, broken down by stat</p>
+${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged yet for this card</div>'}
+<hr style="border:none;border-top:1px solid #ececf2;margin:10px 0"/>
+<div class="stat-row"><span class="stat-label" style="font-weight:700">Total</span><span class="stat-val" style="font-weight:700;color:#9a8200">${totalPts.toFixed(1)} pts</span></div>
+<button class="modal-confirm" style="width:100%;margin-top:14px" onclick="this.closest('.modal-overlay').remove()">Close</button>
+</div>`;
+ document.body.appendChild(modal);
  }
 
  // ─── Banana Ball Games Viewer ──────────────────────────────────
@@ -1348,33 +1409,69 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  }
 
  const teamBlock = (team) => {
- const battersRows = (team.batters||[]).filter((b) => b.AB > 0 || b.R > 0 || b.H > 0).map((b) => {
+ const battersRows = (team.batters||[]).filter((b) => b.AB > 0 || b.R > 0 || b.H > 0 || b.SB > 0).map((b) => {
  const payout = payoutByName[b.name.toLowerCase()];
- return `<div class="stat-row clickable-stat-row" onclick='openPlayerDrilldown(${JSON.stringify(b.name)}, "batter")'>
- <span class="stat-label">${escapeHtml(b.name)}</span>
- <span class="stat-val">${b.H}-${b.AB}, ${b.RBI} RBI${b.K?', '+b.K+' K':''}${payout?' · <span style="color:#1e8a4c">+'+payout.base_peels.toFixed(1)+'pts</span>':''}</span>
- </div>`;
+ return `<tr class="clickable-stat-row" onclick='openPlayerDrilldown(${JSON.stringify(b.name)}, "batter")'>
+ <td style="text-align:left;padding:6px 8px;font-weight:600">${escapeHtml(b.name)}${b.positions?.length?` <span style="color:#a0a0ae;font-size:11px">(${b.positions.join('/')})</span>`:''}</td>
+ <td>${b.AB}</td><td>${b.R}</td><td>${b.H}</td><td>${b.RBI}</td><td>${b.B4S}</td><td>${b.K}</td><td>${b.WO||0}</td><td>${b.SB}</td>
+ <td>${b.AVG?.toFixed(3).replace(/^0/,'')||'—'}</td><td>${b.OPS?.toFixed(3).replace(/^0/,'')||'—'}</td>
+ <td style="color:#1e8a4c;font-weight:700">${payout?'+'+payout.base_peels.toFixed(1):'—'}</td>
+ </tr>`;
  }).join('');
+ const battingTotals = (team.batters||[]).reduce((t,b) => ({AB:t.AB+(b.AB||0),R:t.R+(b.R||0),H:t.H+(b.H||0),RBI:t.RBI+(b.RBI||0),B4S:t.B4S+(b.B4S||0),K:t.K+(b.K||0),WO:t.WO+(b.WO||0),SB:t.SB+(b.SB||0)}), {AB:0,R:0,H:0,RBI:0,B4S:0,K:0,WO:0,SB:0});
+
  const pitcherRows = (team.pitchers||[]).map((p) => {
  const payout = payoutByName[p.name.toLowerCase()];
- return `<div class="stat-row clickable-stat-row" onclick='openPlayerDrilldown(${JSON.stringify(p.name)}, "pitcher")'>
- <span class="stat-label">${escapeHtml(p.name)}</span>
- <span class="stat-val">${p.IP} IP, ${p.ER} ER, ${p.K} K${payout?' · <span style="color:#1e8a4c">+'+payout.base_peels.toFixed(1)+'pts</span>':''}</span>
- </div>`;
+ return `<tr class="clickable-stat-row" onclick='openPlayerDrilldown(${JSON.stringify(p.name)}, "pitcher")'>
+ <td style="text-align:left;padding:6px 8px;font-weight:600">${escapeHtml(p.name)}${p.designations?.length?` <span style="color:#a0a0ae;font-size:11px">(${p.designations.join(', ')})</span>`:''}</td>
+ <td>${p.IP}</td><td>${p.H}</td><td>${p.R}</td><td>${p.ER}</td><td>${p.B4S||0}</td><td>${p.K}</td><td>${p.ERA?.toFixed(2)||'—'}</td><td>${p.MPI||'—'}</td>
+ <td style="color:#1e8a4c;font-weight:700">${payout?'+'+payout.base_peels.toFixed(1):'—'}</td>
+ </tr>`;
  }).join('');
- return `<div class="card" style="margin-bottom:10px">
- <h3 style="color:#1a1a2e">${escapeHtml(team.teamName)} — ${team.prh.points_total} pts (${team.prh.runs} runs, ${team.prh.hits} hits)</h3>
- <div style="font-size:12px;color:#8a8a96;text-transform:uppercase;margin-bottom:6px">Batting</div>
- ${battersRows||'<div style="font-size:13px;color:#b0b0bc">No batting data</div>'}
- <div style="font-size:12px;color:#8a8a96;text-transform:uppercase;margin:10px 0 6px">Pitching</div>
- ${pitcherRows||'<div style="font-size:13px;color:#b0b0bc">No pitching data</div>'}
+
+ const drList = team.designated_runners?.length ? team.designated_runners.map(r=>escapeHtml(r.name)).join(', ') : null;
+ const dfList = team.designated_fielders?.length ? team.designated_fielders.map(f=>escapeHtml(f.name)).join(', ') : null;
+
+ return `<div class="card" style="margin-bottom:10px;overflow-x:auto">
+ <h3 style="color:#1a1a2e;margin-bottom:10px">${escapeHtml(team.teamName)} — ${team.prh.points_total} pts (${team.prh.runs} runs, ${team.prh.hits} hits)</h3>
+ <div style="font-size:11px;color:#8a8a96;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;font-weight:700">Batting</div>
+ <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center;min-width:560px">
+ <thead><tr style="color:#8a8a96;border-bottom:1px solid #ececf2"><th style="text-align:left;padding:4px 8px">Player</th><th>AB</th><th>R</th><th>H</th><th>RBI</th><th>B4S</th><th>SO</th><th>WO</th><th>SB</th><th>AVG</th><th>OPS</th><th>Pts</th></tr></thead>
+ <tbody>${battersRows||'<tr><td colspan="12" style="color:#b0b0bc;padding:8px">No batting data</td></tr>'}
+ <tr style="border-top:2px solid #ececf2;font-weight:700"><td style="text-align:left;padding:6px 8px">Total</td><td>${battingTotals.AB}</td><td>${battingTotals.R}</td><td>${battingTotals.H}</td><td>${battingTotals.RBI}</td><td>${battingTotals.B4S}</td><td>${battingTotals.K}</td><td>${battingTotals.WO}</td><td>${battingTotals.SB}</td><td>—</td><td>—</td><td>—</td></tr>
+ </tbody>
+ </table>
+ <div style="font-size:11px;color:#8a8a96;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;font-weight:700">Pitching</div>
+ <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center;min-width:480px">
+ <thead><tr style="color:#8a8a96;border-bottom:1px solid #ececf2"><th style="text-align:left;padding:4px 8px">Player</th><th>IP</th><th>H</th><th>R</th><th>ER</th><th>B4S</th><th>K</th><th>ERA</th><th>MPI</th><th>Pts</th></tr></thead>
+ <tbody>${pitcherRows||'<tr><td colspan="9" style="color:#b0b0bc;padding:8px">No pitching data</td></tr>'}</tbody>
+ </table>
+ ${drList||dfList?`<div style="margin-top:12px;font-size:12px;color:#6b6b78">${drList?`<div><strong>Designated Runner:</strong> ${drList}</div>`:''}${dfList?`<div><strong>Designated Fielder:</strong> ${dfList}</div>`:''}</div>`:''}
+ </div>`;
+ };
+
+ const lineScoreBlock = () => {
+ const innings = game.teams[0]?.lineScore?.innings?.map(i=>i.inning) || [];
+ const teamLine = (team) => {
+ const cells = innings.map(inn => {
+ const found = team.lineScore?.innings?.find(i=>i.inning===inn);
+ return `<td>${found ? (found.runs ?? '—') : '—'}</td>`;
+ }).join('');
+ return `<tr><td style="text-align:left;padding:6px 8px;font-weight:600">${escapeHtml(team.teamName)}</td>${cells}<td style="font-weight:700;background:#fff8d6">${team.prh.points_total}</td><td>${team.prh.runs}</td><td>${team.prh.hits}</td><td>${(team.fielding||[]).reduce((s,f)=>s+(f.TPO||0),0)}</td></tr>`;
+ };
+ return `<div class="card" style="overflow-x:auto;margin-bottom:10px">
+ <table style="width:100%;border-collapse:collapse;font-size:12px;text-align:center;min-width:460px">
+ <thead><tr style="color:#8a8a96"><th style="text-align:left;padding:4px 8px"></th>${innings.map(i=>`<th>${i}</th>`).join('')}<th style="background:#fff8d6">P</th><th>R</th><th>H</th><th>TPO</th></tr></thead>
+ <tbody>${game.teams.map(teamLine).join('')}</tbody>
+ </table>
  </div>`;
  };
 
  detailEl.innerHTML = `
  <div class="card" style="text-align:center;margin-bottom:12px">
- <div style="font-size:12px;color:#8a8a96">${game.venue?.name||''} · ${game.gameDate}</div>
+ <div style="font-size:12px;color:#8a8a96">${game.venue?.name||''}${game.venue?.city?', '+game.venue.city:''} · ${game.gameDate}</div>
  </div>
+ ${lineScoreBlock()}
  ${game.teams.map(teamBlock).join('')}
  ${game.notes?`<div class="card" style="font-size:13px;color:#6b6b78;white-space:pre-wrap">${escapeHtml(game.notes)}</div>`:''}
  <div id="player-drilldown"></div>
