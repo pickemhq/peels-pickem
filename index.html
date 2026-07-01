@@ -193,6 +193,11 @@
 <h2 style="margin-top:16px">Card Packs</h2>
 <div id="packs-list"></div>
 </div>
+<div id="page-championship" class="page">
+<h2>🏆 Championship Odds</h2>
+<div id="championship-my-bet" style="margin-bottom:12px"></div>
+<div id="championship-list"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+</div>
 <div id="page-feedback" class="page">
 <h2>Send Feedback</h2>
 <div class="card">
@@ -249,6 +254,15 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ Resolve Games</summary>
 <div id="admin-games-list" style="margin-top:10px"></div>
 </details>
+</div>
+<div class="card" style="margin-top:12px">
+<h3 style="color:#9a8200;margin-bottom:12px">🏆 Championship</h3>
+<p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Odds recalculate live from team stats. Resolving pays out every championship bet and locks the market.</p>
+<div id="admin-championship-status" style="margin-bottom:10px"></div>
+<div class="input-group"><label>Declare Champion</label>
+<select id="champ-winner-select"></select>
+</div>
+<button class="admin-btn" style="background:#f0c14b" onclick="resolveChampionship()">Declare Champion &amp; Pay Out</button>
 </div>
 <div class="card" style="margin-top:12px">
 <details>
@@ -315,6 +329,9 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <button class="bottom-tab" id="tab-cards" onclick="showPage('cards',null)">
 <span class="bottom-tab-icon">▣</span><span>Cards</span>
 </button>
+<button class="bottom-tab" id="tab-championship" onclick="showPage('championship',null)">
+<span class="bottom-tab-icon">🏆</span><span>Champ</span>
+</button>
 <button class="bottom-tab" id="tab-admin" style="display:none" onclick="showPage('admin',null)">
 <span class="bottom-tab-icon">⚙</span><span>Admin</span>
 </button>
@@ -355,6 +372,27 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <h3>Confirm Result</h3>
 <p id="resolve-body" style="color:#3a3a48;font-size:14px;margin-bottom:16px"></p>
 <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('resolve-modal')">Cancel</button><button class="modal-confirm" onclick="confirmResolve()">Confirm</button></div>
+</div>
+</div>
+
+<!-- Championship resolve modal -->
+<div class="modal-overlay" id="champ-resolve-modal" style="display:none">
+<div class="modal-box">
+<h3>🏆 Confirm Champion</h3>
+<p id="champ-resolve-body" style="color:#3a3a48;font-size:14px;margin-bottom:16px"></p>
+<div class="modal-btns"><button class="modal-cancel" onclick="closeModal('champ-resolve-modal')">Cancel</button><button class="modal-confirm" onclick="confirmChampionshipResolve()">Confirm</button></div>
+</div>
+</div>
+
+<!-- Championship bet modal -->
+<div class="modal-overlay" id="champ-bet-modal" style="display:none">
+<div class="modal-box">
+<h3 id="champ-bet-title">Bet on Champion</h3>
+<p id="champ-bet-sub" style="color:#6b6b78;font-size:13px;margin-bottom:12px"></p>
+<input class="modal-input" id="champ-bet-wager" type="number" min="1" placeholder="Peels to wager" oninput="updateChampBetPreview()"/>
+<div class="payout-preview" id="champ-bet-preview" style="text-align:left;margin-bottom:8px"></div>
+<div class="auth-error" id="champ-bet-error"></div>
+<div class="modal-btns"><button class="modal-cancel" onclick="closeModal('champ-bet-modal')">Cancel</button><button class="modal-confirm" onclick="placeChampionshipBet()">Place Bet</button></div>
 </div>
 </div>
 
@@ -635,10 +673,10 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  document.querySelectorAll('.page').forEach(x =>x.classList.remove('active'));
  document.querySelectorAll('.bottom-tab').forEach(x =>x.classList.remove('active'));
  document.getElementById('page-' + p).classList.add('active');
- const tabId ='tab-' + (p ==='games' ?'games' : p ==='cards' ?'cards' : p ==='admin' ?'admin' : null);
+ const tabId ='tab-' + (p ==='games' ?'games' : p ==='cards' ?'cards' : p ==='admin' ?'admin' : p ==='championship' ?'championship' : null);
  const tabEl = document.getElementById(tabId);
  if (tabEl) tabEl.classList.add('active');
- ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage })[p]?.();
+ ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, championship: renderChampionshipPage })[p]?.();
  closeTopMenu();
  }
 
@@ -1001,6 +1039,211 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  toast(`Prediction placed! ${wagerRounded} Peels on ${pick.team}`);
  }
 
+ // ─── Championship ─────────────────────────────────────────
+ // Uses the same K (run-differential) / L (trick-play) formula as game odds,
+ // simulated round-robin across every team pairing to derive a title probability.
+ function kFormula(away, home) {
+ const ARS = away.runs, ARA = away.runs_allowed, AGP = away.games;
+ const HRS = home.runs, HRA = home.runs_allowed, HGP = home.games;
+ if (!AGP || !HGP) return 0.5;
+ const a = Math.pow(ARS / AGP, 1.83);
+ const b = Math.pow(HRA / HGP, 1.83);
+ const c = Math.pow(HRS / HGP, 1.83);
+ const d = Math.pow(ARA / AGP, 1.83);
+ const denom = (a * b) + (c * d);
+ return denom > 0 ? (a * b) / denom : 0.5;
+ }
+ function lFormula(away, home) {
+ const ATP = away.trick_play_outs, AGP = away.games;
+ const HTP = home.trick_play_outs, HGP = home.games;
+ if (!AGP || !HGP) return 0.5;
+ const at = ATP / AGP, ht = HTP / HGP;
+ const denom = at + ht;
+ return denom > 0 ? at / denom : 0.5;
+ }
+ function mFormula(away, home) {
+ return (0.875 * kFormula(away, home)) + (0.125 * lFormula(away, home));
+ }
+
+ async function computeChampionshipOdds() {
+ const teams = await fetchTeamStats();
+ if (!teams.length) return [];
+ const scores = teams.map(t => {
+ let total = 0, count = 0;
+ for (const opp of teams) {
+ if (opp.id === t.id) continue;
+ total += mFormula(t, opp); // t as away
+ total += (1 - mFormula(opp, t)); // t as home
+ count += 2;
+ }
+ return { ...t, strength: count > 0 ? total / count : 0.5 };
+ });
+ const sumStrength = scores.reduce((s, t) => s + t.strength, 0);
+ return scores.map(t => ({
+ ...t,
+ winPct: sumStrength > 0 ? (t.strength / sumStrength) * 100 : (100 / scores.length)
+ })).sort((a, b) => b.winPct - a.winPct);
+ }
+
+ let champOddsCache = null;
+ let champBetTeam = null;
+
+ async function renderChampionshipPage() {
+ const el = document.getElementById('championship-list');
+ el.innerHTML ='<div class="loading"><span class="spinner"></span>Calculating odds...</div>';
+
+ // Check if championship is already resolved
+ const { data: champState } = await supabase.from('championship_state').select('*').eq('id', 1).maybeSingle();
+
+ // Show user's existing bet, if any
+ const myBetEl = document.getElementById('championship-my-bet');
+ myBetEl.innerHTML ='';
+ if (currentUser) {
+ const { data: myBet } = await supabase.from('championship_bets').select('*').eq('user_id', currentUser.id).maybeSingle();
+ if (myBet) {
+ const statusColor = myBet.status ==='won' ?'#1e8a4c' : myBet.status ==='lost' ?'#c0392b' :'#8a7300';
+ myBetEl.innerHTML = `<div class="card" style="text-align:center;border-color:#f0dd80;background:#fff8d6">
+ <div style="font-size:13px;color:#6b6b78">Your championship pick</div>
+ <div style="font-family:'Bangers',cursive;font-size:22px;color:#1a1a2e;margin:2px 0">${escapeHtml(myBet.team_name)}</div>
+ <div style="font-size:13px;color:${statusColor};font-weight:700">${myBet.wager} Peels → ${myBet.potential} if champion (${myBet.odds}x) · ${myBet.status}</div>
+ </div>`;
+ }
+ }
+
+ if (champState?.status ==='closed') {
+ el.innerHTML = `<div class="card" style="text-align:center;background:#fff8d6;border-color:#f0dd80">
+ <div style="font-size:13px;color:#9a8200;font-weight:700;margin-bottom:4px">🏆 Championship Decided</div>
+ <div style="font-family:'Bangers',cursive;font-size:26px;color:#1a1a2e">${escapeHtml(champState.winner)}</div>
+ </div>`;
+ return;
+ }
+
+ try {
+ const ranked = await computeChampionshipOdds();
+ champOddsCache = ranked;
+ if (!ranked.length) { el.innerHTML ='<div class="no-games">No team stats available yet.</div>'; return; }
+ el.innerHTML = ranked.map((t, i) => {
+ const odds = calcPayout(t.winPct);
+ return `<div class="game-card">
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+ <div>
+ <span style="font-family:'Bangers',cursive;font-size:14px;color:#b8b8c4;margin-right:8px">#${i+1}</span>
+ <span class="team-name" style="font-size:17px">${escapeHtml(t.name)}</span>
+ </div>
+ <div style="text-align:right">
+ <div style="font-family:'Bangers',cursive;font-size:20px;color:#9a8200">${t.winPct.toFixed(1)}%</div>
+ <div style="font-size:11px;color:#8a8a96">${odds}x payout</div>
+ </div>
+ </div>
+ <button class="pick-btn" style="width:100%" onclick='openChampBetModal(${JSON.stringify(t.name)}, ${odds}, ${t.winPct.toFixed(1)})'>Bet on ${escapeHtml(t.name)}</button>
+ </div>`;
+ }).join('');
+ } catch(e) {
+ el.innerHTML = `<div class="no-games">Error calculating odds: ${e.message}</div>`;
+ }
+ }
+
+ function openChampBetModal(teamName, odds, winPct) {
+ if (!currentUser) { toast('Sign in first!'); return; }
+ champBetTeam = { teamName, odds };
+ document.getElementById('champ-bet-title').textContent ='Bet on' + teamName;
+ document.getElementById('champ-bet-sub').textContent = `Current odds: ${winPct}% to win it all → ${odds}x payout (locks in when you bet)`;
+ document.getElementById('champ-bet-wager').value ='';
+ document.getElementById('champ-bet-preview').textContent ='';
+ setError('champ-bet-error','');
+ document.getElementById('champ-bet-modal').style.display ='flex';
+ setTimeout(() =>document.getElementById('champ-bet-wager').focus(), 100);
+ }
+
+ function updateChampBetPreview() {
+ const w = parseFloat(document.getElementById('champ-bet-wager').value) || 0;
+ const p = document.getElementById('champ-bet-preview');
+ p.textContent = (w >0 && champBetTeam) ? `Win ${Math.round(w * champBetTeam.odds)} Peels if${champBetTeam.teamName} takes the championship` :'';
+ }
+
+ async function placeChampionshipBet() {
+ setError('champ-bet-error','');
+ if (!currentUser || !champBetTeam) return;
+ const wager = parseFloat(document.getElementById('champ-bet-wager').value);
+ if (!wager || wager<= 0) { setError('champ-bet-error','Enter a valid wager.'); return; }
+ if (wager >currentProfile.peels) { setError('champ-bet-error','Not enough Peels!'); return; }
+
+ // One championship bet per user - check for existing
+ const { data: existing } = await supabase.from('championship_bets').select('id').eq('user_id', currentUser.id).maybeSingle();
+ if (existing) { setError('champ-bet-error','You already have a championship pick. Only one per person!'); return; }
+
+ const wagerRounded = Math.round(wager);
+ const potential = Math.round(wagerRounded * champBetTeam.odds);
+ const newPeels = Math.round(currentProfile.peels - wagerRounded);
+
+ const { error } = await supabase.from('championship_bets').insert({
+ user_id: currentUser.id, team_name: champBetTeam.teamName, odds: champBetTeam.odds,
+ wager: wagerRounded, potential, status:'pending'
+ });
+ if (error) { setError('champ-bet-error', error.message); return; }
+
+ await supabase.from('profiles').update({ peels: newPeels }).eq('id', currentUser.id);
+ currentProfile.peels = newPeels;
+ await refreshHeader();
+ closeModal('champ-bet-modal');
+ toast(`Locked in! ${wagerRounded} Peels on${champBetTeam.teamName} at ${champBetTeam.odds}x`);
+ renderChampionshipPage();
+ }
+
+ // ─── Admin: Championship resolution ────────────────────────
+ async function populateChampionshipSelect() {
+ const sel = document.getElementById('champ-winner-select');
+ if (!sel) return;
+ try {
+ const teams = await fetchTeamStats();
+ sel.innerHTML = teams.map(t => `<option value="${escapeAttr(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+ } catch(e) {
+ sel.innerHTML ='<option value="">Could not load teams</option>';
+ }
+ const statusEl = document.getElementById('admin-championship-status');
+ if (statusEl) {
+ const { data: champState } = await supabase.from('championship_state').select('*').eq('id', 1).maybeSingle();
+ if (champState?.status ==='closed') {
+ statusEl.innerHTML = `<div style="font-size:13px;color:#1e8a4c;font-weight:700">✓ Championship resolved: ${escapeHtml(champState.winner)}</div>`;
+ } else {
+ statusEl.innerHTML = `<div style="font-size:13px;color:#8a8a96">Championship market is open</div>`;
+ }
+ }
+ }
+
+ let pendingChampWinner = null;
+ function resolveChampionship() {
+ const sel = document.getElementById('champ-winner-select');
+ const winner = sel?.value;
+ if (!winner) { toast('Select a team first.'); return; }
+ pendingChampWinner = winner;
+ document.getElementById('champ-resolve-body').textContent = `Declare"${winner}" the Banana Ball Champion? This pays out every championship bet and permanently closes the market.`;
+ document.getElementById('champ-resolve-modal').style.display ='flex';
+ }
+
+ async function confirmChampionshipResolve() {
+ closeModal('champ-resolve-modal');
+ const winner = pendingChampWinner;
+ toast('Settling championship bets...');
+ try {
+ const res = await fetch(`${SUPABASE_URL}/functions/v1/settle-championship-bets`, {
+ method:'POST',
+ headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+ body: JSON.stringify({ winner })
+ });
+ const result = await res.json();
+ if (res.ok) {
+ await refreshHeader();
+ populateChampionshipSelect();
+ toast(`Champion declared! ${result.won} won, ${result.lost} lost`);
+ } else {
+ toast('Error:' + JSON.stringify(result));
+ }
+ } catch(e) {
+ toast('Error:' + e.message);
+ }
+ }
+
  // ─── My Bets page ─────────────────────────────────────────
  async function renderMyBets() {
  if (!currentUser) return;
@@ -1159,7 +1402,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  }
 
  async function renderAdmin() {
- await Promise.all([renderAdminGames(), renderAdminPlayers(), renderAdminBots()]);
+ await Promise.all([renderAdminGames(), renderAdminPlayers(), renderAdminBots(), populateChampionshipSelect()]);
  renderAdminCardsSection();
  }
 
