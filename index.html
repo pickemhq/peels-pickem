@@ -259,6 +259,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <h3 style="color:#9a8200;margin-bottom:12px">🏆 Championship</h3>
 <p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Odds recalculate live from team stats. Resolving pays out every championship bet and locks the market.</p>
 <div id="admin-championship-status" style="margin-bottom:10px"></div>
+<div id="admin-playoff-status-list" style="margin-bottom:14px"></div>
 <div class="input-group"><label>Declare Champion</label>
 <select id="champ-winner-select"></select>
 </div>
@@ -1068,21 +1069,35 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  async function computeChampionshipOdds() {
  const teams = await fetchTeamStats();
  if (!teams.length) return [];
- const scores = teams.map(t => {
+
+ const { data: statusRows } = await supabase.from('team_playoff_status').select('*');
+ const statusByName = {};
+ for (const s of (statusRows || [])) statusByName[s.team_name.toLowerCase().trim()] = s.status;
+ const statusFor = (name) => statusByName[(name||'').toLowerCase().trim()] || 'contending';
+
+ const eliminated = teams.filter(t => statusFor(t.name) ==='eliminated');
+ const live = teams.filter(t => statusFor(t.name) !=='eliminated');
+
+ // Round-robin only among teams still alive; eliminated teams can't win it
+ const scores = live.map(t => {
  let total = 0, count = 0;
- for (const opp of teams) {
+ for (const opp of live) {
  if (opp.id === t.id) continue;
  total += mFormula(t, opp); // t as away
  total += (1 - mFormula(opp, t)); // t as home
  count += 2;
  }
- return { ...t, strength: count > 0 ? total / count : 0.5 };
+ return { ...t, strength: count > 0 ? total / count : (1 / live.length), status: statusFor(t.name) };
  });
  const sumStrength = scores.reduce((s, t) => s + t.strength, 0);
- return scores.map(t => ({
+ const ranked = scores.map(t => ({
  ...t,
  winPct: sumStrength > 0 ? (t.strength / sumStrength) * 100 : (100 / scores.length)
- })).sort((a, b) => b.winPct - a.winPct);
+ }));
+
+ const eliminatedRanked = eliminated.map(t => ({ ...t, winPct: 0, status:'eliminated' }));
+
+ return [...ranked, ...eliminatedRanked].sort((a, b) => b.winPct - a.winPct);
  }
 
  let champOddsCache = null;
@@ -1123,19 +1138,27 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  champOddsCache = ranked;
  if (!ranked.length) { el.innerHTML ='<div class="no-games">No team stats available yet.</div>'; return; }
  el.innerHTML = ranked.map((t, i) => {
- const odds = calcPayout(t.winPct);
- return `<div class="game-card">
+ const odds = t.status ==='eliminated' ? 0 : calcPayout(t.winPct);
+ const isElim = t.status ==='eliminated';
+ const badge = t.status ==='clinched'
+ ?'<span style="background:#d8f3e3;color:#1e8a4c;border-radius:50px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:6px">CLINCHED</span>'
+ : isElim
+ ?'<span style="background:#fbdede;color:#c0392b;border-radius:50px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:6px">ELIMINATED</span>'
+ :'';
+ return `<div class="game-card" style="${isElim?'opacity:0.55':''}">
  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
  <div>
  <span style="font-family:'Bangers',cursive;font-size:14px;color:#b8b8c4;margin-right:8px">#${i+1}</span>
- <span class="team-name" style="font-size:17px">${escapeHtml(t.name)}</span>
+ <span class="team-name" style="font-size:17px">${escapeHtml(t.name)}</span>${badge}
  </div>
  <div style="text-align:right">
- <div style="font-family:'Bangers',cursive;font-size:20px;color:#9a8200">${t.winPct.toFixed(1)}%</div>
- <div style="font-size:11px;color:#8a8a96">${odds}x payout</div>
+ <div style="font-family:'Bangers',cursive;font-size:20px;color:${isElim?'#c0392b':'#9a8200'}">${t.winPct.toFixed(1)}%</div>
+ <div style="font-size:11px;color:#8a8a96">${isElim?'out':odds+'x payout'}</div>
  </div>
  </div>
- <button class="pick-btn" style="width:100%" onclick='openChampBetModal(${JSON.stringify(t.name)}, ${odds}, ${t.winPct.toFixed(1)})'>Bet on ${escapeHtml(t.name)}</button>
+ ${isElim
+ ?'<div style="text-align:center;font-size:12px;color:#c0392b;font-weight:600;padding:6px 0">No longer eligible for the championship</div>'
+ :`<button class="pick-btn" style="width:100%" onclick='openChampBetModal(${JSON.stringify(t.name)}, ${odds}, ${t.winPct.toFixed(1)})'>Bet on ${escapeHtml(t.name)}</button>`}
  </div>`;
  }).join('');
  } catch(e) {
@@ -1145,6 +1168,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 
  function openChampBetModal(teamName, odds, winPct) {
  if (!currentUser) { toast('Sign in first!'); return; }
+ if (!odds || odds<= 0) { toast('This team is eliminated and can no longer be picked.'); return; }
  champBetTeam = { teamName, odds };
  document.getElementById('champ-bet-title').textContent ='Bet on' + teamName;
  document.getElementById('champ-bet-sub').textContent = `Current odds: ${winPct}% to win it all → ${odds}x payout (locks in when you bet)`;
@@ -1193,13 +1217,33 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  // ─── Admin: Championship resolution ────────────────────────
  async function populateChampionshipSelect() {
  const sel = document.getElementById('champ-winner-select');
- if (!sel) return;
+ const statusListEl = document.getElementById('admin-playoff-status-list');
+ let teams = [];
  try {
- const teams = await fetchTeamStats();
- sel.innerHTML = teams.map(t => `<option value="${escapeAttr(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+ teams = await fetchTeamStats();
+ if (sel) sel.innerHTML = teams.map(t => `<option value="${escapeAttr(t.name)}">${escapeHtml(t.name)}</option>`).join('');
  } catch(e) {
- sel.innerHTML ='<option value="">Could not load teams</option>';
+ if (sel) sel.innerHTML ='<option value="">Could not load teams</option>';
  }
+
+ if (statusListEl && teams.length) {
+ const { data: statusRows } = await supabase.from('team_playoff_status').select('*');
+ const statusByName = {};
+ for (const s of (statusRows || [])) statusByName[s.team_name.toLowerCase().trim()] = s.status;
+ statusListEl.innerHTML = `<div style="font-size:12px;color:#8a8a96;margin-bottom:6px;font-weight:700">Playoff Status</div>` +
+ teams.map(t => {
+ const current = statusByName[t.name.toLowerCase().trim()] ||'contending';
+ return `<div class="admin-game-item">
+ <div class="admin-game-info"><strong>${escapeHtml(t.name)}</strong></div>
+ <select class="playoff-status-select" data-team="${escapeAttr(t.name)}" style="padding:6px 10px;border-radius:8px;border:1px solid #d8d8e2;font-family:'DM Sans',sans-serif;font-size:13px">
+ <option value="contending" ${current==='contending'?'selected':''}>Contending</option>
+ <option value="clinched" ${current==='clinched'?'selected':''}>Clinched Playoffs</option>
+ <option value="eliminated" ${current==='eliminated'?'selected':''}>Eliminated</option>
+ </select>
+ </div>`;
+ }).join('');
+ }
+
  const statusEl = document.getElementById('admin-championship-status');
  if (statusEl) {
  const { data: champState } = await supabase.from('championship_state').select('*').eq('id', 1).maybeSingle();
@@ -1210,6 +1254,16 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  }
  }
  }
+
+ document.addEventListener('change', async function(e) {
+ const sel = e.target.closest('.playoff-status-select');
+ if (!sel) return;
+ const teamName = sel.dataset.team;
+ const status = sel.value;
+ const { error } = await supabase.from('team_playoff_status').upsert({ team_name: teamName, status, updated_at: new Date().toISOString() }, { onConflict:'team_name' });
+ if (error) { toast('Error updating status:' + error.message); return; }
+ toast(`${teamName} marked as${status}`);
+ });
 
  let pendingChampWinner = null;
  function resolveChampionship() {
