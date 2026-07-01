@@ -1742,12 +1742,12 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  const RARITY_ORDER = ['common','rare','legendary','mythic'];
  const RARITY_NEXT = { common:'rare', rare:'legendary', legendary:'mythic' };
 
- function cardHTML(card, showMult=true, lockedRarity=null, userCardId=null, showSell=false, earnedPeels=null) {
+ function cardHTML(card, showMult=true, lockedRarity=null, userCardId=null, showSell=false, earnedPeels=null, ownedSince=null) {
  const rarity = lockedRarity || card.rarity;
  const mult = RARITY_MULTIPLIER[rarity] || 1;
  const pts = earnedPeels !== null ? earnedPeels : (card.total_peels_earned || 0);
  const sellPrice = Math.round(200 * (mult / 5)); // sell value based on rarity
- const clickAttr = card.id ? `onclick="openMyCardBreakdown('${card.id}','${escapeAttr(card.player_name)}')"` : '';
+ const clickAttr = card.id ? `onclick="openMyCardBreakdown('${card.id}','${escapeAttr(card.player_name)}','${ownedSince||''}')"` : '';
  return `<div class="player-card ${rarity}" ${clickAttr} style="${card.id?'cursor:pointer':''}">
 <div class="card-rarity rarity-${rarity}">${rarity} ${rarity==='mythic'?'':rarity==='legendary'?'⭐':rarity==='rare'?'':'·'}</div>
 <div class="card-player">${card.player_name}</div>
@@ -1760,11 +1760,23 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
 </div>`;
  }
 
- async function openMyCardBreakdown(cardId, playerName) {
- const { data: logs } = await supabase.from('card_stat_logs')
- .select('base_peels, notes, game_date, game_id, breakdown')
+ async function openMyCardBreakdown(cardId, playerName, ownedSince) {
+ const { data: allLogs } = await supabase.from('card_stat_logs')
+ .select('base_peels, notes, game_date, game_id, breakdown, created_at')
  .eq('card_id', cardId)
  .order('game_date', { ascending: false });
+
+ // Only show games that happened on/after the user claimed this card.
+ // game_date reflects when the underlying game was played (set by the
+ // Game Stats Sync flow), which is the right signal here — a game that
+ // happened before the user owned the card shouldn't count for them,
+ // no matter when admin ran the sync for it.
+ const ownedSinceDate = ownedSince ? new Date(ownedSince) : null;
+ const logs = (allLogs||[]).filter(l => {
+ if (!ownedSinceDate) return true;
+ const logDate = l.game_date ? new Date(l.game_date) : (l.created_at ? new Date(l.created_at) : null);
+ return logDate ? logDate >= ownedSinceDate : true;
+ });
 
  const rows = (logs||[]).map(l => {
  const statLines = l.breakdown ? Object.entries(l.breakdown).filter(([k,v]) => v.count !== 0).map(([k,v]) =>
@@ -1969,7 +1981,7 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
 <button class="btn-gold" style="background:#FFD700;color:#1a1a2e;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif" onclick="showStarterCardPicker(currentUser.id)">Claim Your Free Starter Card</button>
 </div>`;
  } else {
- myEl.innerHTML = `<div class="cards-grid-collection">${myCards.map(uc =>cardHTML(uc.player_cards, true, uc.locked_rarity, uc.id, true, uc.total_peels_earned || 0)).join('')}</div>`;
+ myEl.innerHTML = `<div class="cards-grid-collection">${myCards.map(uc =>cardHTML(uc.player_cards, true, uc.locked_rarity, uc.id, true, uc.total_peels_earned || 0, uc.created_at)).join('')}</div>`;
  }
 
  // Packs
