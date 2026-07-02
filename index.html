@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Peels Pick'em</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIj48cGF0aCBkPSJNNDAgOTYgQyAxOCA4OCwgMTIgNTYsIDI2IDMyIEMgMzUgMTYsIDUyIDYsIDY4IDQgQyA3NCAzLCA3OSA2LCA3OSAxMSBDIDc5IDE2LCA3NCAxOCwgNjkgMTkgQyA1NiAyMiwgNDQgMzIsIDM3IDQ2IEMgMjcgNjUsIDMxIDg1LCA0OCA5MCBaIiBmaWxsPSIjYzk5NjBjIiBzdHJva2U9IiMxYTFhMmUiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik02OCA0IEMgNzQgLTEsIDg0IC0xLCA4OSA0IEMgOTMgOCwgOTEgMTMsIDg2IDE0IEMgNzkgMTUsIDczIDEzLCA2OSAxOSIgZmlsbD0iI2E4N2IwOSIgc3Ryb2tlPSIjMWExYTJlIiBzdHJva2Utd2lkdGg9IjUiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNMzIgNDAgQyAyNCA1OCwgMjcgNzgsIDQ0IDg4IiBmaWxsPSJub25lIiBzdHJva2U9IiNlNmI4MWEiIHN0cm9rZS13aWR0aD0iNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBvcGFjaXR5PSIwLjgiLz48ZyBzdHJva2U9IiNlNjM5NDYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PHBhdGggZD0iTTI2IDU2IEMgMzMgNTIsIDQxIDUyLCA0OCA1NiIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSI2Ii8+PGxpbmUgeDE9IjMwIiB5MT0iNDkiIHgyPSIzNSIgeTI9IjU5IiBzdHJva2Utd2lkdGg9IjQiLz48bGluZSB4MT0iMzkiIHkxPSI0OSIgeDI9IjQ0IiB5Mj0iNTkiIHN0cm9rZS13aWR0aD0iNCIvPjxwYXRoIGQ9Ik0yMyA3MCBDIDMwIDY2LCAzOCA2NiwgNDUgNzAiIGZpbGw9Im5vbmUiIHN0cm9rZS13aWR0aD0iNiIvPjxsaW5lIHgxPSIyNyIgeTE9IjYzIiB4Mj0iMzIiIHkyPSI3MyIgc3Ryb2tlLXdpZHRoPSI0Ii8+PGxpbmUgeDE9IjM2IiB5MT0iNjMiIHgyPSI0MSIgeTI9IjczIiBzdHJva2Utd2lkdGg9IjQiLz48L2c+PC9zdmc+"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -171,7 +172,22 @@
 <body>
 <div class="app">
 <div class="header">
-<div class="logo">PEELS <span>PICK'EM</span></div>
+<div class="logo" style="display:flex;align-items:center;gap:8px">
+<svg width="30" height="30" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0" aria-hidden="true">
+<path d="M40 96 C 18 88, 12 56, 26 32 C 35 16, 52 6, 68 4 C 74 3, 79 6, 79 11 C 79 16, 74 18, 69 19 C 56 22, 44 32, 37 46 C 27 65, 31 85, 48 90 Z" fill="#c9960c" stroke="#1a1a2e" stroke-width="5" stroke-linejoin="round"/>
+<path d="M68 4 C 74 -1, 84 -1, 89 4 C 93 8, 91 13, 86 14 C 79 15, 73 13, 69 19" fill="#a87b09" stroke="#1a1a2e" stroke-width="5" stroke-linejoin="round"/>
+<path d="M32 40 C 24 58, 27 78, 44 88" fill="none" stroke="#e6b81a" stroke-width="5" stroke-linecap="round" opacity="0.8"/>
+<g stroke="#e63946" stroke-linecap="round">
+<path d="M26 56 C 33 52, 41 52, 48 56" fill="none" stroke-width="6"/>
+<line x1="30" y1="49" x2="35" y2="59" stroke-width="4"/>
+<line x1="39" y1="49" x2="44" y2="59" stroke-width="4"/>
+<path d="M23 70 C 30 66, 38 66, 45 70" fill="none" stroke-width="6"/>
+<line x1="27" y1="63" x2="32" y2="73" stroke-width="4"/>
+<line x1="36" y1="63" x2="41" y2="73" stroke-width="4"/>
+</g>
+</svg>
+PEELS <span>PICK'EM</span>
+</div>
 <div style="display:flex;align-items:center;gap:8px">
 <div class="dropdown-wrap">
 <button class="dropdown-toggle" onclick="toggleTopMenu()" style="position:relative">Menu ▾<span id="notif-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#e63946;border:2px solid #FFD700"></span></button>
