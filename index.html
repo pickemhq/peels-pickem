@@ -726,12 +726,24 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  const { data, error } = await supabase.auth.signUp({ email, password: pass });
  if (error) { setError('auth-error', error.message); btn.textContent ='Sign Up'; btn.disabled = false; return; }
  await supabase.from('profiles').insert({ id: data.user.id, username, peels: 100, is_admin: false });
+ currentUser = data.user;
+ const profile = await loadProfile(currentUser.id);
+ if (profile) applyProfile(profile);
+ renderUnifiedGamesPage();
+ renderLeaderboard();
+ checkUnreadNotifications();
  // Show starter card picker after login
  setTimeout(() =>showStarterCardPicker(data.user.id), 800);
  toast('Welcome! You have 100 Peels! Pick your free starter card');
  } else {
- const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+ const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
  if (error) { setError('auth-error','Incorrect email or password.'); btn.textContent ='Sign In'; btn.disabled = false; return; }
+ currentUser = data.user;
+ const profile = await loadProfile(currentUser.id);
+ if (profile) applyProfile(profile);
+ renderUnifiedGamesPage();
+ renderLeaderboard();
+ checkUnreadNotifications();
  }
  btn.textContent = isSignup ?'Sign Up' :'Sign In'; btn.disabled = false;
  } catch(e) {
@@ -795,11 +807,20 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  } catch(e) {
  toast('Error signing out:' + e.message);
  }
- // All cleanup (clearing currentUser/currentProfile, showing the auth
- // overlay, resetting the header, switching back to the Games tab) is
- // handled by the SIGNED_OUT branch of onAuthStateChange below. Doing it
- // here too would race against that listener and could leave the UI in
- // an inconsistent state on the next sign-in.
+ applyLoggedOutState();
+ }
+
+ function applyLoggedOutState() {
+ currentUser = null; currentProfile = null;
+ document.getElementById('auth-overlay').style.display ='flex';
+ document.getElementById('header-name').textContent ='Guest';
+ document.getElementById('header-peels').textContent ='0';
+ document.getElementById('tab-admin').style.display ='none';
+ document.querySelectorAll('.page').forEach(x =>x.classList.remove('active'));
+ document.querySelectorAll('.bottom-tab').forEach(x =>x.classList.remove('active'));
+ document.getElementById('page-games').classList.add('active');
+ document.getElementById('tab-games').classList.add('active');
+ renderUnifiedGamesPage();
  }
 
  async function refreshHeader() {
@@ -1668,7 +1689,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  closeModal('edit-game-modal');
  toast('Game updated!');
  renderAdminGames();
- renderGames(); // refresh player-facing games too
+ renderUnifiedGamesPage(); // refresh player-facing games too
  }
 
  function resolveGame(gameId, winner) {
@@ -2473,14 +2494,14 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  } else {
  document.getElementById('auth-overlay').style.display ='flex';
  }
- renderGames();
+ renderUnifiedGamesPage();
  renderLeaderboard();
 
  supabase.auth.onAuthStateChange(async (event, session) =>{
  if (event ==='SIGNED_IN' && session?.user) {
  currentUser = session.user;
  const profile = await loadProfile(currentUser.id);
- if (profile) { applyProfile(profile); renderGames(); renderLeaderboard(); checkUnreadNotifications(); }
+ if (profile) { applyProfile(profile); renderUnifiedGamesPage(); renderLeaderboard(); checkUnreadNotifications(); }
  } else if (event ==='SIGNED_OUT') {
  currentUser = null; currentProfile = null;
  document.getElementById('auth-overlay').style.display ='flex';
