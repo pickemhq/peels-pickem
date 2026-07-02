@@ -789,20 +789,17 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  }
 
  async function logout() {
+ closeModal('logout-modal');
  try {
  await supabase.auth.signOut();
- } catch(e) {}
- currentUser = null; currentProfile = null;
- closeModal('logout-modal');
- document.getElementById('auth-overlay').style.display ='flex';
- document.getElementById('header-name').textContent ='Guest';
- document.getElementById('header-peels').textContent ='0';
- document.getElementById('tab-admin').style.display ='none';
- document.querySelectorAll('.page').forEach(x =>x.classList.remove('active'));
- document.querySelectorAll('.bottom-tab').forEach(x =>x.classList.remove('active'));
- document.getElementById('page-games').classList.add('active');
- document.getElementById('tab-games').classList.add('active');
- renderUnifiedGamesPage();
+ } catch(e) {
+ toast('Error signing out:' + e.message);
+ }
+ // All cleanup (clearing currentUser/currentProfile, showing the auth
+ // overlay, resetting the header, switching back to the Games tab) is
+ // handled by the SIGNED_OUT branch of onAuthStateChange below. Doing it
+ // here too would race against that listener and could leave the UI in
+ // an inconsistent state on the next sign-in.
  }
 
  async function refreshHeader() {
@@ -2487,7 +2484,14 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  } else if (event ==='SIGNED_OUT') {
  currentUser = null; currentProfile = null;
  document.getElementById('auth-overlay').style.display ='flex';
- showPage('games', null);
+ document.getElementById('header-name').textContent ='Guest';
+ document.getElementById('header-peels').textContent ='0';
+ document.getElementById('tab-admin').style.display ='none';
+ document.querySelectorAll('.page').forEach(x =>x.classList.remove('active'));
+ document.querySelectorAll('.bottom-tab').forEach(x =>x.classList.remove('active'));
+ document.getElementById('page-games').classList.add('active');
+ document.getElementById('tab-games').classList.add('active');
+ renderUnifiedGamesPage();
  }
  });
  } catch(e) {
