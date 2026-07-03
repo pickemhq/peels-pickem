@@ -177,6 +177,7 @@
 <div class="dropdown-wrap">
 <button class="dropdown-toggle" onclick="toggleTopMenu()" style="position:relative">Menu ▾<span id="notif-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#e63946;border:2px solid #FFD700"></span></button>
 <div id="top-menu" class="dropdown-menu">
+<button onclick="showPage('news',null);closeTopMenu()">News</button>
 <button onclick="showPage('notifications',null);closeTopMenu()" style="position:relative">Notifications<span id="notif-dot-menu" style="display:none;margin-left:6px;width:8px;height:8px;border-radius:50%;background:#e63946"></span></button>
 <button onclick="showPage('mybets',null);closeTopMenu()">My Bets</button>
 <button onclick="showPage('leaderboard',null);closeTopMenu()">Leaderboard</button>
@@ -193,6 +194,7 @@
 <div id="page-games" class="page active"></div>
 <div id="page-mybets" class="page"><h2>My Bets</h2><div id="my-bets-stats" class="grid2" style="margin-bottom:14px"></div><div class="card" id="my-bets-list"></div></div>
 <div id="page-notifications" class="page"><h2>Notifications</h2><div class="card" id="notifications-list"></div></div>
+<div id="page-news" class="page"><h2>📰 News</h2><div id="news-list"></div></div>
 <div id="page-leaderboard" class="page"><h2>Leaderboard</h2><div class="card" id="lb-list"><div class="loading"><span class="spinner"></span>Loading...</div></div></div>
 <div id="page-cards" class="page">
 <h2>My Cards</h2>
@@ -325,6 +327,22 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <div class="input-group"><label>Date</label><input id="sync-date" type="date"/></div>
 <button class="admin-btn" onclick="findGamesForDate()" style="background:#60a5fa">Find Games</button>
 <div id="games-found-list" style="margin-top:12px"></div>
+</div>
+<div class="card" style="margin-top:12px">
+<h3 style="color:#9a8200;margin-bottom:12px">📰 Weekend Recap</h3>
+<p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Pick the weekend's date range to pull top-scoring cards automatically, then write your recap around them.</p>
+<div class="grid2">
+<div class="input-group"><label>From</label><input id="recap-week-start" type="date"/></div>
+<div class="input-group"><label>To</label><input id="recap-week-end" type="date"/></div>
+</div>
+<button class="admin-btn" style="background:#60a5fa" onclick="loadTopPerformersForRecap()">Find Top Performers</button>
+<div id="recap-top-performers-preview" style="margin-top:12px"></div>
+<div class="input-group" style="margin-top:14px"><label>Title</label><input id="recap-title" placeholder="e.g. Weekend Recap: July 4th Slugfest"/></div>
+<div class="input-group"><label>Recap</label>
+<textarea id="recap-body" rows="8" placeholder="Write your weekend recap here..." style="width:100%;background:#fff;border:1px solid #f0dd80;color:#1a1a2e;padding:10px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical"></textarea>
+</div>
+<div class="auth-error" id="recap-error"></div>
+<button class="admin-btn" onclick="publishRecap()">Publish Recap &amp; Notify Everyone</button>
 </div>
 </div>
 
@@ -684,7 +702,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  const tabId ='tab-' + (p ==='games' ?'games' : p ==='cards' ?'cards' : p ==='admin' ?'admin' : p ==='championship' ?'championship' : null);
  const tabEl = document.getElementById(tabId);
  if (tabEl) tabEl.classList.add('active');
- ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, championship: renderChampionshipPage, notifications: renderNotificationsPage })[p]?.();
+ ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, championship: renderChampionshipPage, notifications: renderNotificationsPage, news: renderNewsPage })[p]?.();
  closeTopMenu();
  }
 
@@ -846,7 +864,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  }
 
  function notifIcon(type) {
- return { bet_won:'🎉', bet_lost:'📉', card_earning:'▣', championship:'🏆', live_bonus:'🔴' }[type] ||'🔔';
+ return { bet_won:'🎉', bet_lost:'📉', card_earning:'▣', championship:'🏆', live_bonus:'🔴', news:'📰' }[type] ||'🔔';
  }
 
  async function renderNotificationsPage() {
@@ -1331,6 +1349,110 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  closeModal('champ-bet-modal');
  toast(`Locked in! ${wagerRounded} Peels on${champBetTeam.teamName} at ${champBetTeam.odds}x`);
  renderChampionshipPage();
+ }
+
+ // ─── News / Weekend Recap ───────────────────────────────────
+ let recapTopPerformersCache = null;
+
+ async function loadTopPerformersForRecap() {
+ const start = document.getElementById('recap-week-start').value;
+ const end = document.getElementById('recap-week-end').value;
+ const previewEl = document.getElementById('recap-top-performers-preview');
+ if (!start || !end) { toast('Pick both dates first.'); return; }
+ previewEl.innerHTML ='<div class="loading"><span class="spinner"></span>Finding top performers...</div>';
+
+ try {
+ // game_date on card_stat_logs is a date string (e.g. "2026-06-28") set by
+ // Game Stats Sync, so a plain string range comparison works here.
+ const { data: logs } = await supabase.from('card_stat_logs')
+ .select('card_id, base_peels, game_date, player_cards(player_name, team_name, position)')
+ .gte('game_date', start)
+ .lte('game_date', end);
+
+ if (!logs?.length) { previewEl.innerHTML ='<div class="no-games">No synced games found in this date range.</div>'; recapTopPerformersCache = []; return; }
+
+ // Sum points per card across the whole range, then rank
+ const totals = {};
+ for (const l of logs) {
+ if (!l.player_cards) continue;
+ const key = l.card_id;
+ if (!totals[key]) totals[key] = { player_name: l.player_cards.player_name, team_name: l.player_cards.team_name, position: l.player_cards.position, points: 0 };
+ totals[key].points += (l.base_peels || 0);
+ }
+ const ranked = Object.values(totals).sort((a,b) => b.points - a.points).slice(0, 10);
+ recapTopPerformersCache = ranked;
+
+ previewEl.innerHTML = `<div class="card" style="background:#fff8d6;border-color:#f0dd80">
+ <div style="font-size:12px;color:#8a7300;font-weight:700;margin-bottom:8px">TOP PERFORMERS (${start} to ${end})</div>
+ ${ranked.map((r,i) => `<div class="stat-row"><span class="stat-label">#${i+1} ${escapeHtml(r.player_name)} <span style="color:#a0a0ae">${r.team_name?'· '+escapeHtml(r.team_name):''}</span></span><span class="stat-val" style="color:#1e8a4c;font-weight:700">${r.points.toFixed(1)} pts</span></div>`).join('')}
+ </div>`;
+ } catch(e) {
+ previewEl.innerHTML = `<div class="no-games">Error: ${e.message}</div>`;
+ }
+ }
+
+ async function publishRecap() {
+ setError('recap-error','');
+ const title = document.getElementById('recap-title').value.trim();
+ const body = document.getElementById('recap-body').value.trim();
+ const start = document.getElementById('recap-week-start').value;
+ const end = document.getElementById('recap-week-end').value;
+ if (!title) { setError('recap-error','Enter a title.'); return; }
+ if (!body) { setError('recap-error','Write the recap text.'); return; }
+
+ const { data: post, error } = await supabase.from('news_posts').insert({
+ title, body,
+ week_start: start || null,
+ week_end: end || null,
+ top_performers: recapTopPerformersCache || null
+ }).select().single();
+
+ if (error) { setError('recap-error', error.message); return; }
+
+ // Notify every user
+ const { data: allUsers } = await supabase.from('profiles').select('id').eq('is_admin', false).eq('is_bot', false);
+ if (allUsers?.length) {
+ const notifRows = allUsers.map(u => ({
+ user_id: u.id,
+ type:'news',
+ title: `📰 New recap: ${title}`,
+ body: null,
+ read: false
+ }));
+ // Insert in batches to avoid one giant request
+ const batchSize = 200;
+ for (let i = 0; i< notifRows.length; i += batchSize) {
+ await supabase.from('notifications').insert(notifRows.slice(i, i+batchSize));
+ }
+ }
+
+ document.getElementById('recap-title').value ='';
+ document.getElementById('recap-body').value ='';
+ document.getElementById('recap-top-performers-preview').innerHTML ='';
+ recapTopPerformersCache = null;
+ toast(`Recap published and${allUsers?.length||0} users notified!`);
+ }
+
+ async function renderNewsPage() {
+ const el = document.getElementById('news-list');
+ el.innerHTML ='<div class="loading"><span class="spinner"></span>Loading...</div>';
+ const { data: posts } = await supabase.from('news_posts').select('*').order('created_at', { ascending: false });
+ if (!posts?.length) { el.innerHTML ='<div class="no-games">No recaps yet. Check back after the weekend!</div>'; return; }
+
+ el.innerHTML = posts.map(p => {
+ const dateRange = (p.week_start && p.week_end) ? `${p.week_start} – ${p.week_end}` : new Date(p.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+ const performersHtml = (p.top_performers && p.top_performers.length) ? `
+ <div style="background:#fff8d6;border:1px solid #f0dd80;border-radius:10px;padding:12px;margin-top:12px">
+ <div style="font-size:11px;color:#8a7300;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px">Top Performers</div>
+ ${p.top_performers.map((r,i) => `<div class="stat-row"><span class="stat-label">#${i+1} ${escapeHtml(r.player_name)}</span><span class="stat-val" style="color:#1e8a4c;font-weight:700">${r.points.toFixed(1)} pts</span></div>`).join('')}
+ </div>` :'';
+ return `<div class="card" style="margin-bottom:14px">
+ <div style="font-size:11px;color:#9a9aa8;margin-bottom:4px">${dateRange}</div>
+ <h3 style="font-family:'Bangers',cursive;font-size:22px;color:#1a1a2e;letter-spacing:0.5px;margin-bottom:8px">${escapeHtml(p.title)}</h3>
+ <div style="font-size:14px;color:#3a3a48;white-space:pre-wrap;line-height:1.5">${escapeHtml(p.body)}</div>
+ ${performersHtml}
+ </div>`;
+ }).join('');
  }
 
  // ─── Admin: Championship resolution ────────────────────────
