@@ -1127,7 +1127,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  );
 
  if (!match) { contentEl.innerHTML ='<div class="no-games">No box score found for this matchup on that date yet.</div>'; return; }
- if (match.status !=='final') { contentEl.innerHTML ='<div class="no-games">Game hasn&#39;t finished yet — check back after the game!</div>'; return; }
+ if (match.status ==='scheduled') { contentEl.innerHTML ='<div class="no-games">Game hasn&#39;t started yet — check back once it&#39;s underway!</div>'; return; }
 
  await showBoxScore(match.id, contentEl);
  } catch(e) {
@@ -2035,6 +2035,12 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  };
 
  detailEl.innerHTML = `
+ ${game.status !=='final' ? `<div class="card" style="text-align:center;margin-bottom:12px;background:#fff8d6;border-color:#f0dd80">
+ <span style="color:#8a7300;font-size:13px;font-weight:700">🔴 Game in progress — stats update as it's played</span>
+ <div style="margin-top:8px">
+ <button class="result-btn" style="font-size:12px;padding:6px 14px" onclick="showBoxScore('${gameId}')">↻ Reload for latest</button>
+ </div>
+ </div>` :''}
  <div class="card" style="text-align:center;margin-bottom:12px">
  <div style="font-size:12px;color:#8a8a96">${game.venue?.name||''}${game.venue?.city?', '+game.venue.city:''} · ${game.gameDate}</div>
  </div>
