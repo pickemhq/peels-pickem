@@ -1236,6 +1236,60 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  return (0.875 * kFormula(away, home)) + (0.125 * lFormula(away, home));
  }
 
+ const PLAYOFF_SPOTS = 4; // only the top 4 of 6 teams make the playoffs
+
+ // The API's own total_season_games field returns 116 for every team,
+ // which is confirmed wrong - real regular-season length is 60 or 61
+ // games depending on the team, set directly since there's no reliable
+ // API field for it. Matched by substring against team name (case-
+ // insensitive) so "Loco Beach Coconuts" matches "coconuts", etc.
+ const TEAM_SEASON_LENGTH = [
+ { match:'bananas', games: 60 },
+ { match:'tailgaters', games: 60 },
+ { match:'clowns', games: 61 },
+ { match:'coconuts', games: 61 },
+ { match:'firefighters', games: 61 },
+ { match:'party animals', games: 61 }
+ ];
+ function seasonLengthFor(teamName) {
+ const norm = (teamName||'').toLowerCase();
+ const found = TEAM_SEASON_LENGTH.find(t => norm.includes(t.match));
+ return found ? found.games : 60; // fallback if a team name doesn't match any entry above
+ }
+
+ function calcGamesBehind(team, cutoffTeam) {
+ // Standard sports "games behind" formula relative to the team sitting
+ // in the last playoff spot (the cutoff line). Defensively guarded in
+ // case the API ever omits `record` on a team - falls back to 0 (treated
+ // as even with the cutoff) rather than throwing and breaking the whole page.
+ if (!team?.record || !cutoffTeam?.record) return 0;
+ return ((cutoffTeam.record.wins - team.record.wins) + (team.record.losses - cutoffTeam.record.losses)) / 2;
+ }
+
+ function calcGamesRemaining(team) {
+ if (!team?.record) return 0;
+ const played = team.record.wins + team.record.losses;
+ return Math.max(0, seasonLengthFor(team.name) - played);
+ }
+
+ function calcPlayoffLikelihood(gamesBehind, gamesRemaining) {
+ // Returns 0-1: how realistic it is for a team to still make the top 4,
+ // given how far behind the cutoff they are and how much season is left
+ // to close that gap. This is separate from team strength (the K/L
+ // formula) - a strong team that's mathematically buried should still
+ // have suppressed odds, and a weaker team in a comfortable standings
+ // spot with games still to play shouldn't be written off just because
+ // its underlying stats are average.
+ if (gamesRemaining<= 0) return gamesBehind<= 0 ? 1 : 0;
+ // Hard mathematical elimination: can't close a gap bigger than the
+ // number of games left to play, even in the most generous scenario
+ // (winning out while the cutoff team loses out). No amount of "still
+ // early" softening should override a true impossibility.
+ if (gamesBehind >gamesRemaining) return 0;
+ const ratio = gamesBehind / (gamesRemaining / 2);
+ return 1 / (1 + Math.exp(ratio * 1.5));
+ }
+
  async function computeChampionshipOdds() {
  const teams = await fetchTeamStats();
  if (!teams.length) return [];
@@ -1248,6 +1302,17 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  const eliminated = teams.filter(t => statusFor(t.name) ==='eliminated');
  const live = teams.filter(t => statusFor(t.name) !=='eliminated');
 
+ // Determine the playoff cutoff line: the Nth-place team by current win%
+ // among teams still alive. Standings/games-behind are computed across
+ // ALL teams (not just "live" ones) so the cutoff line itself reflects
+ // reality even if an admin has manually flagged someone eliminated early.
+ const standingsOrder = [...teams].sort((a, b) => {
+ const aPct = a.record ? a.record.wins / Math.max(1, a.record.wins + a.record.losses) : 0;
+ const bPct = b.record ? b.record.wins / Math.max(1, b.record.wins + b.record.losses) : 0;
+ return bPct - aPct;
+ });
+ const cutoffTeam = standingsOrder[Math.min(PLAYOFF_SPOTS, standingsOrder.length) - 1];
+
  // Round-robin only among teams still alive; eliminated teams can't win it
  const scores = live.map(t => {
  let total = 0, count = 0;
@@ -1257,7 +1322,21 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  total += (1 - mFormula(opp, t)); // t as home
  count += 2;
  }
- return { ...t, strength: count > 0 ? total / count : (1 / live.length), status: statusFor(t.name) };
+ const strength = count > 0 ? total / count : (1 / live.length);
+
+ const gamesBehind = calcGamesBehind(t, cutoffTeam);
+ const gamesRemaining = calcGamesRemaining(t);
+ const playoffLikelihood = calcPlayoffLikelihood(gamesBehind, gamesRemaining);
+
+ return {
+ ...t,
+ strength: strength * playoffLikelihood,
+ rawStrength: strength,
+ playoffLikelihood,
+ gamesBehind,
+ gamesRemaining,
+ status: statusFor(t.name)
+ };
  });
  const sumStrength = scores.reduce((s, t) => s + t.strength, 0);
  const ranked = scores.map(t => ({
@@ -1265,7 +1344,13 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  winPct: sumStrength > 0 ? (t.strength / sumStrength) * 100 : (100 / scores.length)
  }));
 
- const eliminatedRanked = eliminated.map(t => ({ ...t, winPct: 0, status:'eliminated' }));
+ const eliminatedRanked = eliminated.map(t => ({
+ ...t,
+ winPct: 0,
+ status:'eliminated',
+ gamesBehind: calcGamesBehind(t, cutoffTeam),
+ gamesRemaining: calcGamesRemaining(t)
+ }));
 
  return [...ranked, ...eliminatedRanked].sort((a, b) => b.winPct - a.winPct);
  }
@@ -1307,7 +1392,13 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  const ranked = await computeChampionshipOdds();
  champOddsCache = ranked;
  if (!ranked.length) { el.innerHTML ='<div class="no-games">No team stats available yet.</div>'; return; }
- el.innerHTML = ranked.map((t, i) => {
+
+ const maxRemaining = Math.max(...ranked.map(t => t.gamesRemaining || 0));
+ const contextHeader = `<div class="card" style="text-align:center;background:#f7f8fb;border-color:#ececf2;margin-bottom:12px">
+ <div style="font-size:12px;color:#6b6b78">Top 4 of 6 teams make the playoffs · up to ${maxRemaining} games left in the season</div>
+ </div>`;
+
+ el.innerHTML = contextHeader + ranked.map((t, i) => {
  const odds = t.status ==='eliminated' ? 0 : calcPayout(t.winPct);
  const isElim = t.status ==='eliminated';
  const badge = t.status ==='clinched'
@@ -1315,8 +1406,13 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  : isElim
  ?'<span style="background:#fbdede;color:#c0392b;border-radius:50px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:6px">ELIMINATED</span>'
  :'';
+ const record = t.record ? `${t.record.wins}-${t.record.losses}` :'—';
+ const gbText = (typeof t.gamesBehind ==='number')
+ ? (t.gamesBehind<= 0 ?'in playoff position' : `${t.gamesBehind.toFixed(1)} GB`)
+ :'';
+ const remainingText = (typeof t.gamesRemaining ==='number') ? `${t.gamesRemaining} left` :'';
  return `<div class="game-card" style="${isElim?'opacity:0.55':''}">
- <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
  <div>
  <span style="font-family:'Bangers',cursive;font-size:14px;color:#b8b8c4;margin-right:8px">#${i+1}</span>
  <span class="team-name" style="font-size:17px">${escapeHtml(t.name)}</span>${badge}
@@ -1326,6 +1422,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  <div style="font-size:11px;color:#8a8a96">${isElim?'out':odds+'x payout'}</div>
  </div>
  </div>
+ <div style="font-size:12px;color:#8a8a96;margin-bottom:8px">${record}${gbText?' · '+gbText:''}${remainingText?' · '+remainingText:''}</div>
  ${isElim
  ?'<div style="text-align:center;font-size:12px;color:#c0392b;font-weight:600;padding:6px 0">No longer eligible for the championship</div>'
  :`<button class="pick-btn" style="width:100%" onclick='openChampBetModal(${JSON.stringify(t.name)}, ${odds}, ${t.winPct.toFixed(1)})'>Bet on ${escapeHtml(t.name)}</button>`}
