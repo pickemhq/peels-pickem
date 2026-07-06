@@ -230,14 +230,20 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <div id="page-admin" class="page">
 <h2>Admin Panel</h2>
 <div class="card">
-<h3 style="color:#60a5fa;margin-bottom:12px">Import from Schedule</h3>
+<details>
+<summary style="cursor:pointer;color:#60a5fa;font-weight:700;font-size:15px;list-style:none">▸ Import from Schedule</summary>
+<div style="margin-top:10px">
 <p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Pull upcoming matchups straight from the Banana Ball schedule.</p>
 <div class="input-group"><label>Date</label><input id="schedule-date" type="date"/></div>
 <button class="admin-btn" onclick="findUpcomingGames()" style="background:#60a5fa">Find Scheduled Games</button>
 <div id="upcoming-games-list" style="margin-top:12px"></div>
 </div>
+</details>
+</div>
 <div class="card">
-<h3 style="color:#9a8200;margin-bottom:12px">Add New Game</h3>
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ Add New Game</summary>
+<div style="margin-top:10px">
 <div class="grid2">
 <div class="input-group"><label>Team 1 Name</label><input id="a-t1" placeholder="Savannah Bananas" oninput="updateOddsPreview()"/></div>
 <div class="input-group"><label>Team 2 Name</label><input id="a-t2" placeholder="Party Animals" oninput="updateOddsPreview()"/></div>
@@ -264,6 +270,8 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 </div>
 <button class="admin-btn" onclick="addGame()">+ Add Game</button>
 </div>
+</details>
+</div>
 <div class="card" style="margin-top:12px">
 <details>
 <summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ Resolve Games</summary>
@@ -271,7 +279,9 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 </details>
 </div>
 <div class="card" style="margin-top:12px">
-<h3 style="color:#9a8200;margin-bottom:12px">🏆 Championship</h3>
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ 🏆 Championship</summary>
+<div style="margin-top:10px">
 <p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Odds recalculate live from team stats. Resolving pays out every championship bet and locks the market.</p>
 <div id="admin-championship-status" style="margin-bottom:10px"></div>
 <div id="admin-playoff-status-list" style="margin-bottom:14px"></div>
@@ -279,6 +289,8 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <select id="champ-winner-select"></select>
 </div>
 <button class="admin-btn" style="background:#f0c14b" onclick="resolveChampionship()">Declare Champion &amp; Pay Out</button>
+</div>
+</details>
 </div>
 <div class="card" style="margin-top:12px">
 <details>
@@ -301,9 +313,13 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 </details>
 </div>
 <div class="card" style="margin-top:12px">
-<h3 style="color:#9a8200;margin-bottom:12px">Card Packs</h3>
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ Card Packs</summary>
+<div style="margin-top:10px">
 <button class="admin-btn" onclick="showCreatePack()" style="margin-bottom:10px">+ Create Pack</button>
 <div id="admin-packs-list"></div>
+</div>
+</details>
 </div>
 <div class="card" style="margin-top:12px">
 <details>
@@ -324,18 +340,28 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 </details>
 </div>
 <div class="card" style="margin-top:12px">
-<h3 style="color:#9a8200;margin-bottom:12px">Enter Player Stats</h3>
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ Enter Player Stats</summary>
+<div style="margin-top:10px">
 <button class="admin-btn" onclick="showPlayerStats()">Enter Stats & Pay Out</button>
 </div>
+</details>
+</div>
 <div class="card" style="margin-top:12px">
-<h3 style="color:#60a5fa;margin-bottom:12px">Game Stats Sync</h3>
+<details>
+<summary style="cursor:pointer;color:#60a5fa;font-weight:700;font-size:15px;list-style:none">▸ Game Stats Sync</summary>
+<div style="margin-top:10px">
 <p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Find games for a date, then sync each one to calculate and pay out card holders automatically.</p>
 <div class="input-group"><label>Date</label><input id="sync-date" type="date"/></div>
 <button class="admin-btn" onclick="findGamesForDate()" style="background:#60a5fa">Find Games</button>
 <div id="games-found-list" style="margin-top:12px"></div>
 </div>
+</details>
+</div>
 <div class="card" style="margin-top:12px">
-<h3 style="color:#9a8200;margin-bottom:12px">📰 Weekend Recap</h3>
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ 📰 Weekend Recap</summary>
+<div style="margin-top:10px">
 <p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Pick the weekend's date range to pull top-scoring cards automatically, then write your recap around them.</p>
 <div class="grid2">
 <div class="input-group"><label>From</label><input id="recap-week-start" type="date"/></div>
@@ -349,6 +375,8 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 </div>
 <div class="auth-error" id="recap-error"></div>
 <button class="admin-btn" onclick="publishRecap()">Publish Recap &amp; Notify Everyone</button>
+</div>
+</details>
 </div>
 </div>
 
@@ -701,6 +729,21 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
  }
 
+ // Returns YYYY-MM-DD for a Date/UTC-timestamp-string in the BROWSER'S
+ // LOCAL timezone, not UTC. Using `someIsoString.slice(0,10)` on a stored
+ // UTC timestamp silently returns the UTC calendar date, which is wrong
+ // whenever local time and UTC fall on different days (e.g. an 8pm
+ // Eastern game is stored as midnight UTC the next day - slicing that
+ // string directly puts the game under the wrong day everywhere date
+ // grouping/filtering happens). Always convert to local time first.
+ function localDateStr(dateInput) {
+ const d = dateInput ? new Date(dateInput) : new Date();
+ const y = d.getFullYear();
+ const m = String(d.getMonth() + 1).padStart(2,'0');
+ const day = String(d.getDate()).padStart(2,'0');
+ return `${y}-${m}-${day}`;
+ }
+
  function showPage(p, btn) {
  document.querySelectorAll('.page').forEach(x =>x.classList.remove('active'));
  document.querySelectorAll('.bottom-tab').forEach(x =>x.classList.remove('active'));
@@ -980,8 +1023,8 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  let dateToShow = selectedDate;
  if (!dateToShow) {
  // Prefer today's date if there are games today, otherwise the most recent/upcoming date
- const todayStr = new Date().toISOString().slice(0,10);
- const datesAvailable = [...new Set(games.map(g => g.game_date ? g.game_date.slice(0,10) : null).filter(Boolean))].sort();
+ const todayStr = localDateStr();
+ const datesAvailable = [...new Set(games.map(g => g.game_date ? localDateStr(g.game_date) : null).filter(Boolean))].sort();
  if (datesAvailable.includes(todayStr)) {
  dateToShow = todayStr;
  } else {
@@ -992,7 +1035,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  }
  document.getElementById('games-date-filter').value = dateToShow || '';
 
- const filtered = dateToShow ? games.filter(g => g.game_date && g.game_date.slice(0,10) === dateToShow) : games;
+ const filtered = dateToShow ? games.filter(g => g.game_date && localDateStr(g.game_date) === dateToShow) : games;
 
  if (!filtered.length) { listEl.innerHTML ='<div class="no-games">No games on this date.</div>'; return; }
 
@@ -1064,7 +1107,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
 
  async function checkLiveCheckinBonus(game) {
  if (!currentUser || !game.game_date) return;
- const dateStr = game.game_date.slice(0,10);
+ const dateStr = localDateStr(game.game_date);
  try {
  const statusMap = await fetchGameStatusMap(dateStr);
  const apiMatch = statusMap[matchupKey(game.t1, game.t2)];
@@ -1148,7 +1191,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
 
  try {
  // Find the matching API game by date + team names
- const dateStr = g.game_date ? new Date(g.game_date).toISOString().slice(0,10) : null;
+ const dateStr = g.game_date ? localDateStr(g.game_date) : null;
  if (!dateStr) { contentEl.innerHTML ='<div class="no-games">No date set for this game yet.</div>'; return; }
 
  const url = `https://banana-stats-pages-seven.vercel.app/api/stats/games?dateFrom=${dateStr}&dateTo=${dateStr}`;
