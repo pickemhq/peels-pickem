@@ -380,6 +380,19 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 </div>
 </details>
 </div>
+<div class="card" style="margin-top:12px">
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ 📢 Updates</summary>
+<div style="margin-top:10px">
+<p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Send a message straight to everyone's notifications — bug fixes, new features, heads up about downtime, anything you want the whole app to see.</p>
+<div class="input-group"><label>Update</label>
+<textarea id="update-text" rows="5" placeholder="What's new..." style="width:100%;background:#fff;border:1px solid #f0dd80;color:#1a1a2e;padding:10px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical"></textarea>
+</div>
+<div class="auth-error" id="update-error"></div>
+<button class="admin-btn" onclick="publishUpdate()">Send to Everyone's Notifications</button>
+</div>
+</details>
+</div>
 </div>
 
 <div style="height:70px"></div>
@@ -985,7 +998,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  }
 
  function notifIcon(type) {
- return { bet_won:'🎉', bet_lost:'📉', card_earning:'▣', championship:'🏆', live_bonus:'🔴', news:'📰' }[type] ||'🔔';
+ return { bet_won:'🎉', bet_lost:'📉', card_earning:'▣', championship:'🏆', live_bonus:'🔴', news:'📰', update:'📢' }[type] ||'🔔';
  }
 
  async function renderNotificationsPage() {
@@ -1698,6 +1711,34 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  ${performersHtml}
  </div>`;
  }).join('');
+ }
+
+ // ─── Admin: Updates broadcast ───────────────────────────────
+ async function publishUpdate() {
+ setError('update-error','');
+ const text = document.getElementById('update-text').value.trim();
+ if (!text) { setError('update-error','Write something first.'); return; }
+
+ const { data: allUsers, error: usersError } = await supabase.from('profiles').select('id').eq('is_admin', false).eq('is_bot', false);
+ if (usersError) { setError('update-error', usersError.message); return; }
+
+ if (allUsers?.length) {
+ const notifRows = allUsers.map(u => ({
+ user_id: u.id,
+ type:'update',
+ title:'📢 App Update',
+ body: text,
+ read: false
+ }));
+ // Insert in batches to avoid one giant request
+ const batchSize = 200;
+ for (let i = 0; i< notifRows.length; i += batchSize) {
+ await supabase.from('notifications').insert(notifRows.slice(i, i+batchSize));
+ }
+ }
+
+ document.getElementById('update-text').value ='';
+ toast(`Update sent to${allUsers?.length||0} users!`);
  }
 
  // ─── Admin: Championship resolution ────────────────────────
@@ -2584,6 +2625,11 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  }
  toast(`Synced! ${data.players_processed} players, ${data.holders_paid} payouts, ${data.total_peels_paid} Peels distributed.`);
  btn.textContent ='Synced ✓';
+ // This game's stats may have changed team win/loss records, which
+ // championship odds are computed from - clear the cached team stats so
+ // the next Championship page view fetches fresh data instead of the
+ // pre-sync snapshot from earlier in this session.
+ teamStatsCache = null;
  if (currentUser) refreshHeader();
  } catch(e) {
  toast('Error:' + e.message);
