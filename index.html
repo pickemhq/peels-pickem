@@ -184,6 +184,7 @@
 <button class="dropdown-toggle" onclick="toggleTopMenu()" style="position:relative">Menu ▾<span id="notif-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#e63946;border:2px solid #FFD700"></span></button>
 <div id="top-menu" class="dropdown-menu">
 <button onclick="showPage('news',null);closeTopMenu()">News</button>
+<button onclick="showPage('help',null);closeTopMenu()">Help</button>
 <button onclick="showPage('notifications',null);closeTopMenu()" style="position:relative">Notifications<span id="notif-dot-menu" style="display:none;margin-left:6px;width:8px;height:8px;border-radius:50%;background:#e63946"></span></button>
 <button onclick="showPage('mybets',null);closeTopMenu()">My Bets</button>
 <button onclick="showPage('leaderboard',null);closeTopMenu()">Leaderboard</button>
@@ -201,6 +202,7 @@
 <div id="page-mybets" class="page"><h2>My Bets</h2><div id="my-bets-stats" class="grid2" style="margin-bottom:14px"></div><div class="card" id="my-bets-list"></div></div>
 <div id="page-notifications" class="page"><h2>Notifications</h2><div class="card" id="notifications-list"></div></div>
 <div id="page-news" class="page"><h2>📰 News</h2><div id="news-list"></div></div>
+<div id="page-help" class="page"><h2>❓ Help</h2><div id="help-list"></div></div>
 <div id="page-leaderboard" class="page"><h2>Leaderboard</h2><div class="card" id="lb-list"><div class="loading"><span class="spinner"></span>Loading...</div></div></div>
 <div id="page-cards" class="page">
 <h2>My Cards</h2>
@@ -751,8 +753,9 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  const tabId ='tab-' + (p ==='games' ?'games' : p ==='cards' ?'cards' : p ==='admin' ?'admin' : p ==='championship' ?'championship' : null);
  const tabEl = document.getElementById(tabId);
  if (tabEl) tabEl.classList.add('active');
- ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, championship: renderChampionshipPage, notifications: renderNotificationsPage, news: renderNewsPage })[p]?.();
+ ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, championship: renderChampionshipPage, notifications: renderNotificationsPage, news: renderNewsPage, help: renderHelpPage })[p]?.();
  closeTopMenu();
+ setTimeout(() =>maybeShowTabExplainer(p), 300);
  }
 
  function toggleTopMenu() {
@@ -899,6 +902,75 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  document.getElementById('header-peels').textContent = Math.round(profile.peels) +'';
  }
  checkUnreadNotifications();
+ }
+
+ // ─── Tab Explainers ─────────────────────────────────────────
+ const TAB_EXPLAINERS = {
+ games: {
+ title:'⚾ Games',
+ body:`Predict which team will win each Banana Ball game. Pick a team, choose how many Peels to wager, and if you're right you win back your wager times the payout multiplier shown on your pick. Underdogs pay out more than favorites. Once a game starts, predictions lock — no more picks until the next game.`
+ },
+ cards: {
+ title:'▣ Cards',
+ body:`Open packs with Peels to collect player cards. Each card has a rarity (Common, Rare, Legendary, Mythic) that multiplies the Peels it earns you. When a real player performs well in a game, everyone holding their card earns Peels automatically — the better the performance, the more you earn. You can also upgrade a card to the next rarity tier for a Peels cost, permanently boosting its earning multiplier — a great way to turn a strong card into an even bigger earner over time.`
+ },
+ championship: {
+ title:'🏆 Championship',
+ body:`Bet on which team will win the Banana Ball championship. Odds update automatically based on team performance, standings, and how many games are left in the season — only the top 4 of 6 teams make the playoffs, so a team falling behind will see its odds drop. Whatever multiplier is shown when you place your bet is locked in for you, even if the odds shift afterward. One championship pick per person, paid out when a champion is declared.`
+ },
+ news: {
+ title:'📰 News',
+ body:`Weekend recaps, written after each weekend of games, highlighting the top-performing player cards and how they did. Check back here to see who had a big weekend and catch up on anything you missed.`
+ },
+ notifications: {
+ title:'🔔 Notifications',
+ body:`You'll get a notification when: one of your predictions wins or loses, one of your cards earns Peels, the championship is decided, you get a bonus for catching a live game, or a new weekend recap is posted. Tap Notifications any time to see your full history.`
+ }
+ };
+
+ async function maybeShowTabExplainer(page) {
+ if (!currentUser || !currentProfile || !TAB_EXPLAINERS[page]) return;
+ const seen = currentProfile.seen_tab_explainers || [];
+ if (seen.includes(page)) return;
+ showTabExplainerModal(page, true);
+ }
+
+ function showTabExplainerModal(page, markSeenOnClose) {
+ const info = TAB_EXPLAINERS[page];
+ if (!info) return;
+ const modal = document.createElement('div');
+ modal.className ='modal-overlay';
+ modal.id ='tab-explainer-modal';
+ modal.onclick = (e) => { if (e.target === modal) closeTabExplainer(page, markSeenOnClose); };
+ modal.innerHTML = `
+<div class="modal-box" style="width:340px">
+<h3>${info.title}</h3>
+<p style="font-size:14px;color:#3a3a48;line-height:1.5;margin-bottom:16px">${info.body}</p>
+<button class="modal-confirm" style="width:100%" onclick="closeTabExplainer('${page}',${markSeenOnClose})">Got it!</button>
+</div>`;
+ document.body.appendChild(modal);
+ }
+
+ async function closeTabExplainer(page, markSeen) {
+ const modal = document.getElementById('tab-explainer-modal');
+ if (modal) modal.remove();
+ if (!markSeen || !currentUser) return;
+ const seen = currentProfile.seen_tab_explainers || [];
+ if (seen.includes(page)) return;
+ const updated = [...seen, page];
+ currentProfile.seen_tab_explainers = updated;
+ await supabase.from('profiles').update({ seen_tab_explainers: updated }).eq('id', currentUser.id);
+ }
+
+ function renderHelpPage() {
+ const el = document.getElementById('help-list');
+ el.innerHTML = Object.entries(TAB_EXPLAINERS).map(([key, info]) => `
+<div class="card" style="margin-bottom:10px">
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ ${info.title}</summary>
+<p style="font-size:14px;color:#3a3a48;line-height:1.5;margin-top:10px">${info.body}</p>
+</details>
+</div>`).join('');
  }
 
  // ─── Notifications ───────────────────────────────────────────
