@@ -14,6 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
+ :root{--theme-primary:#FFD700}
  *{box-sizing:border-box;margin:0;padding:0}
  body{font-family:'DM Sans',sans-serif;background:#f7f8fb;color:#1a1a2e;min-height:100vh}
  .app{max-width:1100px;margin:0 auto;padding:20px}
@@ -21,14 +22,14 @@
  .app{padding:28px 32px}
  .nav{gap:10px}
  }
- .header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#FFD700;border-radius:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+ .header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--theme-primary);border-radius:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
  .logo{font-family:'Bangers',cursive;font-size:28px;color:#1a1a2e;letter-spacing:2px}
  .logo span{color:#2d6a4f}
  .user-pill{display:flex;align-items:center;gap:8px;background:#1a1a2e;color:#9a8200;padding:8px 14px;border-radius:50px;font-size:14px;font-weight:600;cursor:pointer}
- .peels-badge{background:#FFD700;color:#1a1a2e;padding:2px 10px;border-radius:50px;font-weight:700;font-size:13px}
+ .peels-badge{background:var(--theme-primary);color:#1a1a2e;padding:2px 10px;border-radius:50px;font-weight:700;font-size:13px}
  .nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
  .nav-btn{padding:8px 18px;border-radius:50px;border:2px solid #e2c200;background:#fff;color:#9a8200;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;font-size:14px;transition:all .2s}
- .nav-btn.active{background:#FFD700;color:#1a1a2e;border-color:#9a8200}
+ .nav-btn.active{background:var(--theme-primary);color:#1a1a2e;border-color:#9a8200}
  .page{display:none}.page.active{display:block}
  .card{background:#fff;border:1px solid #ececf2;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
  h2{font-family:'Bangers',cursive;font-size:24px;color:#1a1a2e;letter-spacing:1px;margin-bottom:12px}
@@ -42,12 +43,12 @@
  .pick-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
  .pick-btn{padding:10px;border-radius:10px;border:2px solid #e2e2ea;background:#fff;color:#1a1a2e;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;font-size:13px;transition:all .15s;text-align:center}
  .pick-btn:hover{border-color:#9a8200;background:#fffaeb}
- .pick-btn.selected{background:#FFD700;color:#1a1a2e;border-color:#9a8200}
+ .pick-btn.selected{background:var(--theme-primary);color:#1a1a2e;border-color:#9a8200}
  .pick-btn .btn-payout{display:block;font-size:11px;font-weight:400;margin-top:2px;opacity:0.75}
  .wager-row{display:flex;align-items:center;gap:10px}
  .wager-input{flex:1;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:8px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px}
  .wager-input::placeholder{color:#b0b0bc}
- .place-btn{background:#FFD700;color:#1a1a2e;border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;white-space:nowrap}
+ .place-btn{background:var(--theme-primary);color:#1a1a2e;border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;white-space:nowrap}
  .place-btn:disabled{opacity:0.5;cursor:not-allowed}
  .payout-preview{font-size:12px;color:#8a7300;text-align:right;margin-top:4px;min-height:16px}
  .bet-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;font-size:14px}
@@ -65,17 +66,17 @@
  .input-group{margin-bottom:12px}
  .input-group label{display:block;font-size:13px;color:#6b6b78;margin-bottom:4px}
  .input-group input{width:100%;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:9px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px}
- .admin-btn{background:#FFD700;color:#1a1a2e;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;margin-top:8px}
+ .admin-btn{background:var(--theme-primary);color:#1a1a2e;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;margin-top:8px}
  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
  .stat-box{background:#fff8d6;border:1px solid #f0dd80;border-radius:12px;padding:12px;text-align:center}
  .stat-num{font-family:'Bangers',cursive;font-size:28px;color:#9a8200}
  .stat-lbl{font-size:12px;color:#6b6b78;margin-top:2px}
  .overlay{position:fixed;inset:0;background:rgba(20,20,30,0.6);display:flex;align-items:center;justify-content:center;z-index:100}
- .auth-box{background:#fff;border:2px solid #FFD700;border-radius:20px;padding:28px;width:340px;max-width:95vw;box-shadow:0 8px 30px rgba(0,0,0,0.15)}
+ .auth-box{background:#fff;border:2px solid var(--theme-primary);border-radius:20px;padding:28px;width:340px;max-width:95vw;box-shadow:0 8px 30px rgba(0,0,0,0.15)}
  .auth-logo{font-family:'Bangers',cursive;font-size:36px;color:#1a1a2e;text-align:center;letter-spacing:3px;margin-bottom:4px}
  .auth-sub{text-align:center;color:#6b6b78;font-size:13px;margin-bottom:20px}
  .auth-input{width:100%;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:11px 14px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;margin-bottom:10px}
- .auth-btn{width:100%;background:#FFD700;color:#1a1a2e;border:none;padding:12px;border-radius:12px;font-weight:700;cursor:pointer;font-size:16px;font-family:'DM Sans',sans-serif;margin-bottom:8px}
+ .auth-btn{width:100%;background:var(--theme-primary);color:#1a1a2e;border:none;padding:12px;border-radius:12px;font-weight:700;cursor:pointer;font-size:16px;font-family:'DM Sans',sans-serif;margin-bottom:8px}
  .auth-switch{text-align:center;font-size:13px;color:#6b6b78}
  .auth-switch a{color:#9a8200;cursor:pointer;text-decoration:underline}
  .auth-error{color:#c0392b;font-size:13px;text-align:center;margin-bottom:8px;min-height:18px}
@@ -84,6 +85,7 @@
  .no-games{text-align:center;padding:32px;color:#a0a0ae;font-size:14px}
  .result-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
  .result-btn{padding:8px;border-radius:8px;border:1px solid #d8d8e2;background:#fff;color:#1a1a2e;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+ .result-btn.selected{background:var(--theme-primary);border-color:#9a8200;color:#1a1a2e}
  .result-btn:hover{background:#f5f5f9}
  .admin-game-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;gap:10px;flex-wrap:wrap}
  .admin-game-info{flex:1;font-size:14px}
@@ -91,11 +93,11 @@
  .admin-game-info small{color:#9a9aa8;font-size:12px}
  .closed-tag{font-size:11px;padding:2px 8px;border-radius:50px;background:#fbdede;color:#c0392b;margin-left:4px}
  .modal-overlay{position:fixed;inset:0;background:rgba(20,20,30,0.55);display:flex;align-items:center;justify-content:center;z-index:200}
- .modal-box{background:#fff;border:2px solid #FFD700;border-radius:16px;padding:24px;width:320px;max-width:95vw;box-shadow:0 8px 30px rgba(0,0,0,0.18)}
+ .modal-box{background:#fff;border:2px solid var(--theme-primary);border-radius:16px;padding:24px;width:320px;max-width:95vw;box-shadow:0 8px 30px rgba(0,0,0,0.18)}
  .modal-box h3{color:#1a1a2e;margin-bottom:14px;font-family:'Bangers',cursive;font-size:20px;letter-spacing:1px}
  .modal-input{width:100%;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:10px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;margin-bottom:10px}
  .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
- .modal-confirm{background:#FFD700;color:#1a1a2e;border:none;padding:9px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif}
+ .modal-confirm{background:var(--theme-primary);color:#1a1a2e;border:none;padding:9px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif}
  .modal-cancel{background:#fff;color:#6b6b78;border:1px solid #d8d8e2;padding:9px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif}
  .odds-preview{background:#fff8d6;border:1px solid #f0dd80;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;display:flex;justify-content:space-between}
  .odds-preview span{color:#9a8200;font-weight:700}
@@ -126,7 +128,7 @@
  .pack-name{font-family:'Bangers',cursive;font-size:20px;letter-spacing:1px;color:#1a1a2e}
  .pack-price{font-family:'Bangers',cursive;font-size:18px;color:#9a8200}
  .pack-odds{font-size:12px;color:#8a8a96;margin-bottom:10px}
- .pack-btn{background:#FFD700;color:#1a1a2e;border:none;padding:8px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%}
+ .pack-btn{background:var(--theme-primary);color:#1a1a2e;border:none;padding:8px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%}
  .pack-btn:hover{opacity:0.9}
  .pack-btn:disabled{opacity:0.4;cursor:not-allowed}
  .starter-pack{border-color:#6ee7b7!important;background:#f0fdf6!important}
@@ -134,7 +136,7 @@
  .card-reveal-overlay{position:fixed;inset:0;background:rgba(20,20,30,0.75);display:flex;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:16px}
  .card-reveal-box{background:#fff;border-radius:20px;padding:28px;text-align:center;max-width:280px;animation:cardReveal .5s ease-out;box-shadow:0 10px 40px rgba(0,0,0,0.25)}
  @keyframes cardReveal{from{transform:scale(0.5) rotate(-10deg);opacity:0}to{transform:scale(1) rotate(0deg);opacity:1}}
- .reveal-close{background:#FFD700;color:#1a1a2e;border:none;padding:10px 28px;border-radius:50px;font-weight:700;cursor:pointer;font-size:15px;font-family:'DM Sans',sans-serif}
+ .reveal-close{background:var(--theme-primary);color:#1a1a2e;border:none;padding:10px 28px;border-radius:50px;font-weight:700;cursor:pointer;font-size:15px;font-family:'DM Sans',sans-serif}
  .cards-grid-collection{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
  .matchup-card{background:#fff;border:1px solid #ececf2;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s,border-color .15s}
  .matchup-card:hover{box-shadow:0 3px 10px rgba(0,0,0,0.08);border-color:#f0dd80}
@@ -161,7 +163,7 @@
  .bottom-tab.active{color:#9a8200;background:#fff8d6}
  .bottom-tab-icon{font-size:20px;line-height:1}
  .dropdown-wrap{position:relative}
- .dropdown-toggle{background:#1a1a2e;color:#FFD700;border:none;padding:8px 14px;border-radius:50px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+ .dropdown-toggle{background:#1a1a2e;color:var(--theme-primary);border:none;padding:8px 14px;border-radius:50px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
  .dropdown-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #ececf2;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);min-width:160px;z-index:120;overflow:hidden}
  .dropdown-menu.open{display:block}
  .dropdown-menu button{display:block;width:100%;text-align:left;padding:11px 16px;background:#fff;border:none;border-bottom:1px solid #f3f3f6;color:#1a1a2e;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
@@ -169,7 +171,7 @@
  .dropdown-menu button:hover{background:#f7f8fb}
  .game-tabs{display:flex;gap:6px;margin-bottom:14px;border-bottom:2px solid #ececf2}
  .game-tab-btn{flex:1;padding:10px;background:none;border:none;border-bottom:3px solid transparent;color:#9a9aa8;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;cursor:pointer;margin-bottom:-2px}
- .game-tab-btn.active{color:#1a1a2e;border-bottom-color:#FFD700}
+ .game-tab-btn.active{color:#1a1a2e;border-bottom-color:var(--theme-primary)}
  .team-record{font-size:11px;color:#9a9aa8;margin-top:2px}
  .clickable-stat-row{cursor:pointer;transition:background .15s}
  .clickable-stat-row:hover{background:#fafafc}
@@ -181,7 +183,7 @@
 <div class="logo">PEELS <span>PICK'EM</span></div>
 <div style="display:flex;align-items:center;gap:8px">
 <div class="dropdown-wrap">
-<button class="dropdown-toggle" onclick="toggleTopMenu()" style="position:relative">Menu ▾<span id="notif-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#e63946;border:2px solid #FFD700"></span></button>
+<button class="dropdown-toggle" onclick="toggleTopMenu()" style="position:relative">Menu ▾<span id="notif-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#e63946;border:2px solid var(--theme-primary)"></span></button>
 <div id="top-menu" class="dropdown-menu">
 <button onclick="showPage('news',null);closeTopMenu()">News</button>
 <button onclick="showPage('help',null);closeTopMenu()">Help</button>
@@ -489,7 +491,35 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <div id="logout-admin-btn" style="display:none;margin-bottom:10px">
 <button onclick="closeModal('logout-modal');showAdminLogin()" style="width:100%;background:transparent;border:1px solid #f0dd80;color:#9a8200;padding:9px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;">Enter Admin Mode</button>
 </div>
+<div style="margin-bottom:10px">
+<button onclick="closeModal('logout-modal');showEditProfile()" style="width:100%;background:transparent;border:1px solid #f0dd80;color:#9a8200;padding:9px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;">Edit Profile</button>
+</div>
 <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('logout-modal')">Stay</button><button class="modal-confirm" onclick="logout()">Sign Out</button></div>
+</div>
+</div>
+
+<!-- Edit Profile modal -->
+<div class="modal-overlay" id="edit-profile-modal" style="display:none">
+<div class="modal-box">
+<h3>Edit Profile</h3>
+<div class="input-group"><label>Username</label><input class="modal-input" id="ep-username" placeholder="Username"/></div>
+<div class="input-group"><label>Favorite Team</label>
+<select class="modal-input" id="ep-favorite-team">
+<option value="">No favorite team</option>
+</select>
+</div>
+<div class="input-group" id="ep-theme-group" style="display:none">
+<label id="ep-theme-label">Use their colors as the app theme?</label>
+<div style="display:flex;gap:8px;margin-top:4px">
+<button type="button" class="result-btn" id="ep-theme-yes" onclick="setThemeChoice(true)" style="flex:1">Yes, use team colors</button>
+<button type="button" class="result-btn" id="ep-theme-no" onclick="setThemeChoice(false)" style="flex:1">No, keep default</button>
+</div>
+</div>
+<div class="auth-error" id="ep-error"></div>
+<div class="modal-btns">
+<button class="modal-cancel" onclick="closeModal('edit-profile-modal')">Cancel</button>
+<button class="modal-confirm" onclick="saveProfileEdits()">Save</button>
+</div>
 </div>
 </div>
 
@@ -875,6 +905,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  document.getElementById('header-name').textContent = profile.username;
  document.getElementById('header-peels').textContent = Math.round(profile.peels) +'';
  document.getElementById('tab-admin').style.display = profile.is_admin ?'' :'none';
+ applyThemeColor(profile.theme_color || null);
  }
 
  function showLogout() {
@@ -882,6 +913,89 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  document.getElementById('logout-name').textContent = currentProfile?.username || currentUser.email;
  document.getElementById('logout-admin-btn').style.display = currentProfile?.is_admin ?'none' :'block';
  document.getElementById('logout-modal').style.display ='flex';
+ }
+
+ // ─── Edit Profile ─────────────────────────────────────────
+ let pendingThemeChoice = null; // true = use team colors, false = default, null = not yet chosen
+
+ async function showEditProfile() {
+ if (!currentUser) return;
+ setError('ep-error','');
+ document.getElementById('ep-username').value = currentProfile?.username ||'';
+
+ const sel = document.getElementById('ep-favorite-team');
+ sel.innerHTML ='<option value="">No favorite team</option>';
+ try {
+ const teams = await fetchTeamStats();
+ for (const t of teams) {
+ const opt = document.createElement('option');
+ opt.value = t.name;
+ opt.textContent = t.name;
+ sel.appendChild(opt);
+ }
+ } catch(e) { /* dropdown just shows "No favorite team" if this fails */ }
+
+ sel.value = currentProfile?.favorite_team ||'';
+ pendingThemeChoice = currentProfile?.theme_color ? true : (currentProfile?.favorite_team ? false : null);
+ updateThemeGroupVisibility();
+ sel.onchange = updateThemeGroupVisibility;
+
+ document.getElementById('edit-profile-modal').style.display ='flex';
+ }
+
+ function updateThemeGroupVisibility() {
+ const sel = document.getElementById('ep-favorite-team');
+ const group = document.getElementById('ep-theme-group');
+ const team = sel.value;
+ if (!team) { group.style.display ='none'; return; }
+ group.style.display ='block';
+ document.getElementById('ep-theme-label').textContent = `Use${team}'s colors as the app theme?`;
+ highlightThemeChoice();
+ }
+
+ function setThemeChoice(useTeamColors) {
+ pendingThemeChoice = useTeamColors;
+ highlightThemeChoice();
+ }
+
+ function highlightThemeChoice() {
+ const yesBtn = document.getElementById('ep-theme-yes');
+ const noBtn = document.getElementById('ep-theme-no');
+ yesBtn.classList.toggle('selected', pendingThemeChoice === true);
+ noBtn.classList.toggle('selected', pendingThemeChoice === false);
+ }
+
+ async function saveProfileEdits() {
+ setError('ep-error','');
+ const username = document.getElementById('ep-username').value.trim();
+ const favoriteTeam = document.getElementById('ep-favorite-team').value ||null;
+ if (!username) { setError('ep-error','Username cannot be empty.'); return; }
+
+ const themeColor = (favoriteTeam && pendingThemeChoice === true) ? (teamColorsFor(favoriteTeam)?.primary || null) : null;
+
+ const { error } = await supabase.from('profiles').update({
+ username, favorite_team: favoriteTeam, theme_color: themeColor
+ }).eq('id', currentUser.id);
+
+ if (error) { setError('ep-error', error.message); return; }
+
+ currentProfile.username = username;
+ currentProfile.favorite_team = favoriteTeam;
+ currentProfile.theme_color = themeColor;
+ document.getElementById('header-name').textContent = username;
+
+ applyThemeColor(themeColor);
+ closeModal('edit-profile-modal');
+ toast('Profile updated!');
+ renderUnifiedGamesPage();
+ }
+
+ function applyThemeColor(hexColor) {
+ // Swaps the app's primary gold accent for the chosen team's primary
+ // color, via a CSS custom property every gold-colored element reads
+ // from. Falls back to the app's default gold when hexColor is null.
+ const root = document.documentElement;
+ root.style.setProperty('--theme-primary', hexColor ||'#FFD700');
  }
 
  async function logout() {
@@ -1124,6 +1238,16 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
 
  if (!filtered.length) { listEl.innerHTML ='<div class="no-games">No games on this date.</div>'; return; }
 
+ // Pin the user's favorite team's games to the top of the list
+ const favTeam = currentProfile?.favorite_team;
+ if (favTeam) {
+ filtered.sort((a, b) => {
+ const aFav = (a.t1 === favTeam || a.t2 === favTeam) ? 1 : 0;
+ const bFav = (b.t1 === favTeam || b.t2 === favTeam) ? 1 : 0;
+ return bFav - aFav; // favorites first, otherwise preserve existing order
+ });
+ }
+
  const finals = await fetchLeagueRecords();
  const statusMap = dateToShow ? await fetchGameStatusMap(dateToShow) : {};
 
@@ -1145,8 +1269,10 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  }
  }
  const hasScore = (isLive || isApiFinal) && t1Score !== null && t2Score !== null;
+ const isFavGame = favTeam && (g.t1 === favTeam || g.t2 === favTeam);
 
  return `<div class="matchup-card ${isLive?'live-now':''}" onclick="openGameDetail('${g.id}')">
+ ${isFavGame?'<div style="font-size:11px;color:#9a8200;font-weight:700;margin-bottom:6px">⭐ YOUR TEAM</div>':''}
  ${isLive?'<div class="live-badge"><span class="live-dot"></span>LIVE NOW</div>':''}
  <div class="matchup-teams">
  <div class="matchup-team">
@@ -1864,6 +1990,22 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
 
  // ─── Admin ────────────────────────────────────────────────
  const BANANA_SEASON_ID ='e3acccd7-0c28-4eb8-aacf-cf907ee5c6f6';
+
+ // Each team's primary (header background) and secondary (accent text/
+ // border) color, matched to the app's existing two-tone gold/navy scheme.
+ // Matched by substring against team name, same convention as seasonLengthFor.
+ const TEAM_COLORS = [
+ { match:'bananas', primary:'#D9B84D', secondary:'#192751' },
+ { match:'tailgaters', primary:'#E5A823', secondary:'#1A2B4C' },
+ { match:'clowns', primary:'#002D72', secondary:'#C8102E' },
+ { match:'coconuts', primary:'#49AFA6', secondary:'#643E23' },
+ { match:'firefighters', primary:'#C61F2E', secondary:'#111111' },
+ { match:'party animals', primary:'#FF1493', secondary:'#0B0C10' }
+ ];
+ function teamColorsFor(teamName) {
+ const norm = (teamName||'').toLowerCase();
+ return TEAM_COLORS.find(t => norm.includes(t.match)) || null;
+ }
  let teamStatsCache = null;
 
  async function fetchTeamStats() {
@@ -2404,7 +2546,7 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  if (!myCards?.length) {
  myEl.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:#8a8a96">
  No cards yet!<br/><br/>
-<button class="btn-gold" style="background:#FFD700;color:#1a1a2e;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif" onclick="showStarterCardPicker(currentUser.id)">Claim Your Free Starter Card</button>
+<button class="btn-gold" style="background:var(--theme-primary);color:#1a1a2e;border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif" onclick="showStarterCardPicker(currentUser.id)">Claim Your Free Starter Card</button>
 </div>`;
  } else {
  myEl.innerHTML = `<div class="cards-grid-collection">${myCards.map(uc =>cardHTML(uc.player_cards, true, uc.locked_rarity, uc.id, true, uc.total_peels_earned || 0, uc.created_at)).join('')}</div>`;
