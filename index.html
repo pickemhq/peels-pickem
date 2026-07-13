@@ -14,7 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
- :root{--theme-primary:#FFD700;--theme-on-primary:#1a1a2e;--theme-accent-on-navy:#FFD700;--theme-wordmark-accent:#1a1a2e}
+ :root{--theme-primary:#FFD700;--theme-on-primary:#1a1a2e;--theme-secondary:#1a1a2e;--theme-on-secondary:#FFD700}
  *{box-sizing:border-box;margin:0;padding:0}
  body{font-family:'DM Sans',sans-serif;background:#f7f8fb;color:#1a1a2e;min-height:100vh}
  .app{max-width:1100px;margin:0 auto;padding:20px}
@@ -23,13 +23,13 @@
  .nav{gap:10px}
  }
  .header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--theme-primary);border-radius:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
- .logo{font-family:'Bangers',cursive;font-size:28px;color:var(--theme-wordmark-accent);letter-spacing:2px}
- .logo span{color:var(--theme-wordmark-accent)}
- .user-pill{display:flex;align-items:center;gap:8px;background:#1a1a2e;color:var(--theme-accent-on-navy);padding:8px 14px;border-radius:50px;font-size:14px;font-weight:600;cursor:pointer}
+ .logo{font-family:'Bangers',cursive;font-size:28px;color:var(--theme-on-primary);letter-spacing:2px}
+ .logo span{color:var(--theme-on-primary)}
+ .user-pill{display:flex;align-items:center;gap:8px;background:var(--theme-secondary);color:var(--theme-on-secondary);padding:8px 14px;border-radius:50px;font-size:14px;font-weight:600;cursor:pointer}
  .peels-badge{background:var(--theme-primary);color:var(--theme-on-primary);padding:2px 10px;border-radius:50px;font-weight:700;font-size:13px}
  .nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
  .nav-btn{padding:8px 18px;border-radius:50px;border:2px solid #e2c200;background:#fff;color:#9a8200;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;font-size:14px;transition:all .2s}
- .nav-btn.active{background:var(--theme-primary);color:var(--theme-on-primary);border-color:#9a8200}
+ .nav-btn.active{background:var(--theme-secondary);color:var(--theme-on-secondary);border-color:#9a8200}
  .page{display:none}.page.active{display:block}
  .card{background:#fff;border:1px solid #ececf2;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
  h2{font-family:'Bangers',cursive;font-size:24px;color:#1a1a2e;letter-spacing:1px;margin-bottom:12px}
@@ -43,12 +43,12 @@
  .pick-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
  .pick-btn{padding:10px;border-radius:10px;border:2px solid #e2e2ea;background:#fff;color:#1a1a2e;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;font-size:13px;transition:all .15s;text-align:center}
  .pick-btn:hover{border-color:#9a8200;background:#fffaeb}
- .pick-btn.selected{background:var(--theme-primary);color:var(--theme-on-primary);border-color:#9a8200}
+ .pick-btn.selected{background:var(--theme-secondary);color:var(--theme-on-secondary);border-color:#9a8200}
  .pick-btn .btn-payout{display:block;font-size:11px;font-weight:400;margin-top:2px;opacity:0.75}
  .wager-row{display:flex;align-items:center;gap:10px}
  .wager-input{flex:1;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:8px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px}
  .wager-input::placeholder{color:#b0b0bc}
- .place-btn{background:var(--theme-primary);color:var(--theme-on-primary);border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;white-space:nowrap}
+ .place-btn{background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:8px 16px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;white-space:nowrap}
  .place-btn:disabled{opacity:0.5;cursor:not-allowed}
  .payout-preview{font-size:12px;color:#8a7300;text-align:right;margin-top:4px;min-height:16px}
  .bet-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;font-size:14px}
@@ -66,7 +66,7 @@
  .input-group{margin-bottom:12px}
  .input-group label{display:block;font-size:13px;color:#6b6b78;margin-bottom:4px}
  .input-group input{width:100%;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:9px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px}
- .admin-btn{background:var(--theme-primary);color:var(--theme-on-primary);border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;margin-top:8px}
+ .admin-btn{background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%;margin-top:8px}
  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
  .stat-box{background:#fff8d6;border:1px solid #f0dd80;border-radius:12px;padding:12px;text-align:center}
  .stat-num{font-family:'Bangers',cursive;font-size:28px;color:#9a8200}
@@ -76,16 +76,16 @@
  .auth-logo{font-family:'Bangers',cursive;font-size:36px;color:#1a1a2e;text-align:center;letter-spacing:3px;margin-bottom:4px}
  .auth-sub{text-align:center;color:#6b6b78;font-size:13px;margin-bottom:20px}
  .auth-input{width:100%;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:11px 14px;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;margin-bottom:10px}
- .auth-btn{width:100%;background:var(--theme-primary);color:var(--theme-on-primary);border:none;padding:12px;border-radius:12px;font-weight:700;cursor:pointer;font-size:16px;font-family:'DM Sans',sans-serif;margin-bottom:8px}
+ .auth-btn{width:100%;background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:12px;border-radius:12px;font-weight:700;cursor:pointer;font-size:16px;font-family:'DM Sans',sans-serif;margin-bottom:8px}
  .auth-switch{text-align:center;font-size:13px;color:#6b6b78}
  .auth-switch a{color:#9a8200;cursor:pointer;text-decoration:underline}
  .auth-error{color:#c0392b;font-size:13px;text-align:center;margin-bottom:8px;min-height:18px}
- .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:var(--theme-accent-on-navy);padding:10px 22px;border-radius:50px;font-weight:700;font-size:14px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,0.2)}
+ .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#9a8200;padding:10px 22px;border-radius:50px;font-weight:700;font-size:14px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,0.2)}
  .toast.show{opacity:1}
  .no-games{text-align:center;padding:32px;color:#a0a0ae;font-size:14px}
  .result-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
  .result-btn{padding:8px;border-radius:8px;border:1px solid #d8d8e2;background:#fff;color:#1a1a2e;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
- .result-btn.selected{background:var(--theme-primary);border-color:#9a8200;color:var(--theme-on-primary)}
+ .result-btn.selected{background:var(--theme-secondary);border-color:#9a8200;color:var(--theme-on-secondary)}
  .result-btn:hover{background:#f5f5f9}
  .admin-game-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #eee;gap:10px;flex-wrap:wrap}
  .admin-game-info{flex:1;font-size:14px}
@@ -97,7 +97,7 @@
  .modal-box h3{color:#1a1a2e;margin-bottom:14px;font-family:'Bangers',cursive;font-size:20px;letter-spacing:1px}
  .modal-input{width:100%;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:10px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;margin-bottom:10px}
  .modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
- .modal-confirm{background:var(--theme-primary);color:var(--theme-on-primary);border:none;padding:9px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif}
+ .modal-confirm{background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:9px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif}
  .modal-cancel{background:#fff;color:#6b6b78;border:1px solid #d8d8e2;padding:9px;border-radius:10px;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif}
  .odds-preview{background:#fff8d6;border:1px solid #f0dd80;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;display:flex;justify-content:space-between}
  .odds-preview span{color:#9a8200;font-weight:700}
@@ -128,7 +128,7 @@
  .pack-name{font-family:'Bangers',cursive;font-size:20px;letter-spacing:1px;color:#1a1a2e}
  .pack-price{font-family:'Bangers',cursive;font-size:18px;color:#9a8200}
  .pack-odds{font-size:12px;color:#8a8a96;margin-bottom:10px}
- .pack-btn{background:var(--theme-primary);color:var(--theme-on-primary);border:none;padding:8px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%}
+ .pack-btn{background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:8px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px;font-family:'DM Sans',sans-serif;width:100%}
  .pack-btn:hover{opacity:0.9}
  .pack-btn:disabled{opacity:0.4;cursor:not-allowed}
  .starter-pack{border-color:#6ee7b7!important;background:#f0fdf6!important}
@@ -136,7 +136,7 @@
  .card-reveal-overlay{position:fixed;inset:0;background:rgba(20,20,30,0.75);display:flex;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:16px}
  .card-reveal-box{background:#fff;border-radius:20px;padding:28px;text-align:center;max-width:280px;animation:cardReveal .5s ease-out;box-shadow:0 10px 40px rgba(0,0,0,0.25)}
  @keyframes cardReveal{from{transform:scale(0.5) rotate(-10deg);opacity:0}to{transform:scale(1) rotate(0deg);opacity:1}}
- .reveal-close{background:var(--theme-primary);color:var(--theme-on-primary);border:none;padding:10px 28px;border-radius:50px;font-weight:700;cursor:pointer;font-size:15px;font-family:'DM Sans',sans-serif}
+ .reveal-close{background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:10px 28px;border-radius:50px;font-weight:700;cursor:pointer;font-size:15px;font-family:'DM Sans',sans-serif}
  .cards-grid-collection{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
  .matchup-card{background:#fff;border:1px solid #ececf2;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s,border-color .15s}
  .matchup-card:hover{box-shadow:0 3px 10px rgba(0,0,0,0.08);border-color:#f0dd80}
@@ -163,7 +163,7 @@
  .bottom-tab.active{color:#9a8200;background:#fff8d6}
  .bottom-tab-icon{font-size:20px;line-height:1}
  .dropdown-wrap{position:relative}
- .dropdown-toggle{background:#1a1a2e;color:var(--theme-accent-on-navy);border:none;padding:8px 14px;border-radius:50px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+ .dropdown-toggle{background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:8px 14px;border-radius:50px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
  .dropdown-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #ececf2;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);min-width:160px;z-index:120;overflow:hidden}
  .dropdown-menu.open{display:block}
  .dropdown-menu button{display:block;width:100%;text-align:left;padding:11px 16px;background:#fff;border:none;border-bottom:1px solid #f3f3f6;color:#1a1a2e;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
@@ -183,7 +183,7 @@
 <div class="logo">PEELS <span>PICK'EM</span></div>
 <div style="display:flex;align-items:center;gap:8px">
 <div class="dropdown-wrap">
-<button class="dropdown-toggle" onclick="toggleTopMenu()" style="position:relative">Menu ▾<span id="notif-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#e63946;border:2px solid var(--theme-primary)"></span></button>
+<button class="dropdown-toggle" onclick="toggleTopMenu()" style="position:relative">Menu ▾<span id="notif-dot" style="display:none;position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;background:#e63946;border:2px solid var(--theme-secondary)"></span></button>
 <div id="top-menu" class="dropdown-menu">
 <button onclick="showPage('news',null);closeTopMenu()">News</button>
 <button onclick="showPage('help',null);closeTopMenu()">Help</button>
@@ -1016,26 +1016,26 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  return contrastRatio(bgHex, DARK) >= contrastRatio(bgHex, WHITE) ? DARK : WHITE;
  }
 
- function applyThemeColor(hexColor) {
- // Sets four things: the main themed background, a matching computed
- // text color for readability on that background, a separate accent
- // color for elements with a FIXED dark navy background (like the Menu
- // button), and the team's distinctive third accent color for the
- // wordmark specifically. theme_color always stores a team's PRIMARY hex
- // (set in saveProfileEdits via teamColorsFor(...).primary), so the
- // matching TEAM_COLORS entry - and its accent - can be found by
- // reverse lookup rather than needing the team name passed in separately.
+ function applyThemeColor(hexColor, secondaryHexColor) {
+ // Sets the header background (primary) and its computed readable text,
+ // plus a separate secondary background (buttons, Menu pill, username
+ // pill) with its own independently-computed readable text. Both colors
+ // are looked up together from TEAM_COLORS via reverse lookup on the
+ // stored primary hex, since theme_color only ever stores the primary
+ // (set in saveProfileEdits) - this keeps the two values from ever
+ // getting out of sync with each other.
  const primary = hexColor ||'#FFD700';
- const onPrimary = bestTextColorFor(primary);
- const NAVY ='#1a1a2e', DEFAULT_GOLD ='#FFD700';
- const accentOnNavy = contrastRatio(NAVY, primary) >= 3.0 ? primary : DEFAULT_GOLD;
  const matchedTeam = TEAM_COLORS.find(t => t.primary.toLowerCase() === primary.toLowerCase());
- const wordmarkAccent = matchedTeam ? matchedTeam.accent : onPrimary; // no team matched (default gold) - just use the readable color, no separate accent
+ const secondary = secondaryHexColor || matchedTeam?.secondary || '#1a1a2e';
+
+ const onPrimary = bestTextColorFor(primary);
+ const onSecondary = bestTextColorFor(secondary);
+
  const root = document.documentElement;
  root.style.setProperty('--theme-primary', primary);
  root.style.setProperty('--theme-on-primary', onPrimary);
- root.style.setProperty('--theme-accent-on-navy', accentOnNavy);
- root.style.setProperty('--theme-wordmark-accent', wordmarkAccent);
+ root.style.setProperty('--theme-secondary', secondary);
+ root.style.setProperty('--theme-on-secondary', onSecondary);
  }
 
  async function logout() {
@@ -2031,21 +2031,19 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  // ─── Admin ────────────────────────────────────────────────
  const BANANA_SEASON_ID ='e3acccd7-0c28-4eb8-aacf-cf907ee5c6f6';
 
- // Each team's primary (header background), secondary, and accent color.
- // accent is used specifically for the wordmark - it's each team's most
- // distinctive "pop" color, picked without regard to contrast against
- // primary (may be hard to read for some teams, e.g. Coconuts' orange on
- // teal - intentional, per explicit direction, since the wordmark is
- // decorative rather than a place where legibility is critical the way
- // buttons/badges/data are).
- // Matched by substring against team name, same convention as seasonLengthFor.
+ // Each team's primary (header background) and secondary (buttons, Menu
+ // pill, username pill) color. Both drive computed white/black text rather
+ // than relying on a fixed brand color as text - every pairing below was
+ // verified to pass WCAG AA contrast for its own computed text color
+ // before being finalized. Matched by substring against team name, same
+ // convention as seasonLengthFor.
  const TEAM_COLORS = [
- { match:'bananas', primary:'#D9B84D', secondary:'#192751', accent:'#E9B489' },
- { match:'tailgaters', primary:'#E5A823', secondary:'#1A2B4C', accent:'#9AA2A6' },
- { match:'clowns', primary:'#002D72', secondary:'#FDFEFE', accent:'#C8102E' },
- { match:'coconuts', primary:'#49AFA6', secondary:'#643E23', accent:'#F26C36' },
- { match:'firefighters', primary:'#C61F2E', secondary:'#111111', accent:'#E1FA23' },
- { match:'party animals', primary:'#FF1493', secondary:'#0B0C10', accent:'#00F0FF' }
+ { match:'bananas', primary:'#F5C002', secondary:'#102253' },
+ { match:'tailgaters', primary:'#345ACC', secondary:'#F7812D' },
+ { match:'clowns', primary:'#03233C', secondary:'#A53220' },
+ { match:'coconuts', primary:'#49C9D4', secondary:'#A1621D' },
+ { match:'firefighters', primary:'#A53220', secondary:'#FEF202' },
+ { match:'party animals', primary:'#DA1B69', secondary:'#86BA41' }
  ];
  function teamColorsFor(teamName) {
  const norm = (teamName||'').toLowerCase();
@@ -2591,7 +2589,7 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  if (!myCards?.length) {
  myEl.innerHTML = `<div class="card" style="text-align:center;padding:24px;color:#8a8a96">
  No cards yet!<br/><br/>
-<button class="btn-gold" style="background:var(--theme-primary);color:var(--theme-on-primary);border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif" onclick="showStarterCardPicker(currentUser.id)">Claim Your Free Starter Card</button>
+<button class="btn-gold" style="background:var(--theme-secondary);color:var(--theme-on-secondary);border:none;padding:10px 20px;border-radius:10px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif" onclick="showStarterCardPicker(currentUser.id)">Claim Your Free Starter Card</button>
 </div>`;
  } else {
  myEl.innerHTML = `<div class="cards-grid-collection">${myCards.map(uc =>cardHTML(uc.player_cards, true, uc.locked_rarity, uc.id, true, uc.total_peels_earned || 0, uc.created_at)).join('')}</div>`;
