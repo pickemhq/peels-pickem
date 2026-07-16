@@ -845,6 +845,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  if (profile) applyProfile(profile);
  renderUnifiedGamesPage();
  renderLeaderboard();
+ await syncMissedUpdates(currentUser.id);
  checkUnreadNotifications();
  // Show starter card picker after login
  setTimeout(() =>showStarterCardPicker(data.user.id), 800);
@@ -857,6 +858,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  if (profile) applyProfile(profile);
  renderUnifiedGamesPage();
  renderLeaderboard();
+ await syncMissedUpdates(currentUser.id);
  checkUnreadNotifications();
  }
  btn.textContent = isSignup ?'Sign Up' :'Sign In'; btn.disabled = false;
@@ -1885,6 +1887,10 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  const text = document.getElementById('update-text').value.trim();
  if (!text) { setError('update-error','Write something first.'); return; }
 
+ // Store the update permanently so anyone who signs up later still sees it
+ const { data: updateRow, error: insertError } = await supabase.from('app_updates').insert({ title:'📢 App Update', body: text }).select().single();
+ if (insertError) { setError('update-error', insertError.message); return; }
+
  const { data: allUsers, error: usersError } = await supabase.from('profiles').select('id').eq('is_admin', false).eq('is_bot', false);
  if (usersError) { setError('update-error', usersError.message); return; }
 
@@ -1892,6 +1898,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  const notifRows = allUsers.map(u => ({
  user_id: u.id,
  type:'update',
+ update_id: updateRow.id,
  title:'📢 App Update',
  body: text,
  read: false
@@ -1905,6 +1912,34 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
 
  document.getElementById('update-text').value ='';
  toast(`Update sent to${allUsers?.length||0} users!`);
+ }
+
+ // Give a user any app_updates they don't already have a notification for yet.
+ // Safe to call every time someone signs up or logs in.
+ async function syncMissedUpdates(userId) {
+ try {
+ const { data: allUpdates } = await supabase.from('app_updates').select('id, title, body').order('created_at', { ascending: true });
+ if (!allUpdates?.length) return;
+
+ const { data: haveNotifs } = await supabase.from('notifications').select('update_id').eq('user_id', userId).not('update_id', 'is', null);
+ const haveIds = new Set((haveNotifs || []).map(n => n.update_id));
+
+ const missing = allUpdates.filter(u =>!haveIds.has(u.id));
+ if (!missing.length) return;
+
+ const rows = missing.map(u => ({
+ user_id: userId,
+ type:'update',
+ update_id: u.id,
+ title: u.title,
+ body: u.body,
+ read: false
+ }));
+ await supabase.from('notifications').insert(rows);
+ checkUnreadNotifications();
+ } catch(e) {
+ console.error('syncMissedUpdates error:', e);
+ }
  }
 
  // ─── Admin: Championship resolution ────────────────────────
@@ -3095,7 +3130,7 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  if (session?.user) {
  currentUser = session.user;
  const profile = await loadProfile(currentUser.id);
- if (profile) { applyProfile(profile); checkUnreadNotifications(); }
+ if (profile) { applyProfile(profile); await syncMissedUpdates(currentUser.id); checkUnreadNotifications(); }
  } else {
  document.getElementById('auth-overlay').style.display ='flex';
  }
@@ -3106,7 +3141,7 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  if (event ==='SIGNED_IN' && session?.user) {
  currentUser = session.user;
  const profile = await loadProfile(currentUser.id);
- if (profile) { applyProfile(profile); renderUnifiedGamesPage(); renderLeaderboard(); checkUnreadNotifications(); }
+ if (profile) { applyProfile(profile); renderUnifiedGamesPage(); renderLeaderboard(); await syncMissedUpdates(currentUser.id); checkUnreadNotifications(); }
  } else if (event ==='SIGNED_OUT') {
  currentUser = null; currentProfile = null;
  document.getElementById('auth-overlay').style.display ='flex';
