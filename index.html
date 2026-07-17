@@ -44,6 +44,12 @@
  .pick-btn{padding:10px;border-radius:10px;border:2px solid #e2e2ea;background:#fff;color:#1a1a2e;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;font-size:13px;transition:all .15s;text-align:center}
  .pick-btn:hover{border-color:#9a8200;background:#fffaeb}
  .pick-btn.selected{background:var(--theme-secondary);color:var(--theme-on-secondary);border-color:#9a8200}
+ .trivia-option.correct{background:#e3f7e6;border-color:#3fb85a;color:#1a1a2e}
+ .trivia-option.wrong{background:#fbe6e6;border-color:#d64545;color:#1a1a2e}
+ .trivia-option:disabled{cursor:default;opacity:.85}
+ .trivia-timer{font-family:'Bangers',cursive;font-size:38px;color:#9a8200;text-align:center;line-height:1}
+ .trivia-timer.low{color:#d64545}
+ .trivia-streak-pill{display:inline-block;background:#fff8d6;color:#9a8200;border-radius:50px;padding:4px 12px;font-size:12px;font-weight:700;margin-top:6px}
  .pick-btn .btn-payout{display:block;font-size:11px;font-weight:400;margin-top:2px;opacity:0.75}
  .wager-row{display:flex;align-items:center;gap:10px}
  .wager-input{flex:1;background:#fff;border:1px solid #d8d8e2;color:#1a1a2e;padding:8px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px}
@@ -188,6 +194,7 @@
 <button onclick="showPage('news',null);closeTopMenu()">News</button>
 <button onclick="showPage('help',null);closeTopMenu()">Help</button>
 <button onclick="showPage('notifications',null);closeTopMenu()" style="position:relative">Notifications<span id="notif-dot-menu" style="display:none;margin-left:6px;width:8px;height:8px;border-radius:50%;background:#e63946"></span></button>
+<button onclick="showPage('trivia',null);closeTopMenu()" style="position:relative">🎯 Daily Trivia<span id="trivia-dot-menu" style="display:none;margin-left:6px;width:8px;height:8px;border-radius:50%;background:#e63946"></span></button>
 <button onclick="showPage('mybets',null);closeTopMenu()">My Bets</button>
 <button onclick="showPage('leaderboard',null);closeTopMenu()">Leaderboard</button>
 <button onclick="showPage('feedback',null);closeTopMenu()">Feedback</button>
@@ -203,6 +210,7 @@
 <div id="page-games" class="page active"></div>
 <div id="page-mybets" class="page"><h2>My Bets</h2><div id="my-bets-stats" class="grid2" style="margin-bottom:14px"></div><div class="card" id="my-bets-list"></div></div>
 <div id="page-notifications" class="page"><h2>Notifications</h2><div class="card" id="notifications-list"></div></div>
+<div id="page-trivia" class="page"><h2>🎯 Daily Trivia</h2><div id="trivia-content"></div></div>
 <div id="page-news" class="page"><h2>📰 News</h2><div id="news-list"></div></div>
 <div id="page-help" class="page"><h2>❓ Help</h2><div id="help-list"></div></div>
 <div id="page-leaderboard" class="page"><h2>Leaderboard</h2><div class="card" id="lb-list"><div class="loading"><span class="spinner"></span>Loading...</div></div></div>
@@ -392,6 +400,36 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 </div>
 <div class="auth-error" id="update-error"></div>
 <button class="admin-btn" onclick="publishUpdate()">Send to Everyone's Notifications</button>
+</div>
+</details>
+</div>
+<div class="card" style="margin-top:12px">
+<details>
+<summary style="cursor:pointer;color:#9a8200;font-weight:700;font-size:15px;list-style:none">▸ 🎯 Daily Trivia</summary>
+<div style="margin-top:10px">
+<p style="font-size:12px;color:#8a8a96;margin-bottom:10px">Add questions to the bank. One unused question is picked automatically each day, shown to everyone, and marked used so it won't repeat until you add more.</p>
+<div class="input-group"><label>Question</label>
+<textarea id="tq-question" rows="2" placeholder="Which team has the most championships?" style="width:100%;background:#fff;border:1px solid #f0dd80;color:#1a1a2e;padding:10px 12px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical"></textarea>
+</div>
+<div class="grid2">
+<div class="input-group"><label>Option A</label><input class="modal-input" id="tq-a" placeholder="Option A"/></div>
+<div class="input-group"><label>Option B</label><input class="modal-input" id="tq-b" placeholder="Option B"/></div>
+</div>
+<div class="grid2">
+<div class="input-group"><label>Option C</label><input class="modal-input" id="tq-c" placeholder="Option C"/></div>
+<div class="input-group"><label>Option D</label><input class="modal-input" id="tq-d" placeholder="Option D"/></div>
+</div>
+<div class="input-group"><label>Correct Answer</label>
+<select class="modal-input" id="tq-correct">
+<option value="a">A</option>
+<option value="b">B</option>
+<option value="c">C</option>
+<option value="d">D</option>
+</select>
+</div>
+<div class="auth-error" id="tq-error"></div>
+<button class="admin-btn" onclick="addTriviaQuestion()">Add to Question Bank</button>
+<div id="trivia-bank-list" style="margin-top:14px"></div>
 </div>
 </details>
 </div>
@@ -796,7 +834,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  const tabId ='tab-' + (p ==='games' ?'games' : p ==='cards' ?'cards' : p ==='admin' ?'admin' : p ==='championship' ?'championship' : null);
  const tabEl = document.getElementById(tabId);
  if (tabEl) tabEl.classList.add('active');
- ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, championship: renderChampionshipPage, notifications: renderNotificationsPage, news: renderNewsPage, help: renderHelpPage })[p]?.();
+ ({ games: renderUnifiedGamesPage, mybets: renderMyBets, leaderboard: renderLeaderboard, admin: renderAdmin, cards: renderCardsPage, championship: renderChampionshipPage, notifications: renderNotificationsPage, news: renderNewsPage, help: renderHelpPage, trivia: renderTriviaPage })[p]?.();
  closeTopMenu();
  setTimeout(() =>maybeShowTabExplainer(p), 300);
  }
@@ -846,6 +884,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  renderUnifiedGamesPage();
  renderLeaderboard();
  checkUnreadNotifications();
+ checkTriviaDot();
  // Show starter card picker after login
  setTimeout(() =>showStarterCardPicker(data.user.id), 800);
  toast('Welcome! You have 100 Peels! Pick your free starter card');
@@ -858,6 +897,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  renderUnifiedGamesPage();
  renderLeaderboard();
  checkUnreadNotifications();
+ checkTriviaDot();
  }
  btn.textContent = isSignup ?'Sign Up' :'Sign In'; btn.disabled = false;
  } catch(e) {
@@ -1152,7 +1192,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  }
 
  function notifIcon(type) {
- return { bet_won:'🎉', bet_lost:'📉', card_earning:'▣', championship:'🏆', live_bonus:'🔴', news:'📰', update:'📢' }[type] ||'🔔';
+ return { bet_won:'🎉', bet_lost:'📉', card_earning:'▣', championship:'🏆', live_bonus:'🔴', news:'📰', update:'📢', trivia:'🎯' }[type] ||'🔔';
  }
 
  async function renderNotificationsPage() {
@@ -1182,6 +1222,268 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  await supabase.from('notifications').update({ read: true }).in('id', unreadIds);
  checkUnreadNotifications();
  }
+ }
+
+ // ─── Daily Trivia ─────────────────────────────────────────
+ const TRIVIA_TIME_LIMIT = 8; // seconds
+ const TRIVIA_BASE_REWARD = 5; // peels earned per streak day (day 1 = 5, day 2 = 10, day 3 = 15...)
+ const TRIVIA_STREAK_CAP_DAYS = Infinity; // set a number (e.g. 30) to stop the reward from climbing past that streak day
+ let triviaTimerInterval = null;
+ let triviaStartMs = null;
+ let triviaAnswered = false;
+ let triviaTodayQuestion = null;
+
+ function triviaReward(streakDay) {
+ const cappedDay = Math.min(streakDay, TRIVIA_STREAK_CAP_DAYS);
+ return TRIVIA_BASE_REWARD * cappedDay;
+ }
+
+ function triviaToday() {
+ // Calendar date in the visitor's local timezone, e.g. "2026-07-16"
+ const d = new Date();
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+ }
+ function triviaYesterday() {
+ const d = new Date();
+ d.setDate(d.getDate() - 1);
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+ }
+
+ // Picks (and caches in trivia_daily) the question everyone sees today.
+ async function getTodayTriviaQuestion() {
+ const today = triviaToday();
+ const { data: existing } = await supabase.from('trivia_daily').select('question_id').eq('trivia_date', today).maybeSingle();
+ let questionId = existing?.question_id;
+
+ if (!questionId) {
+ // Prefer a question that hasn't been used yet
+ let { data: pool } = await supabase.from('trivia_questions').select('id').eq('used', false).limit(50);
+ if (!pool?.length) {
+ // Bank exhausted — start the rotation over
+ await supabase.from('trivia_questions').update({ used: false }).eq('used', true);
+ const retry = await supabase.from('trivia_questions').select('id').eq('used', false).limit(50);
+ pool = retry.data;
+ }
+ if (!pool?.length) return null; // no questions in the bank at all
+
+ const pick = pool[Math.floor(Math.random() * pool.length)];
+ // onConflict lets a race between two simultaneous visitors resolve to one winner
+ const { data: inserted } = await supabase.from('trivia_daily')
+ .upsert({ trivia_date: today, question_id: pick.id }, { onConflict:'trivia_date', ignoreDuplicates: true })
+ .select().maybeSingle();
+ questionId = inserted?.question_id;
+ if (!questionId) {
+ // Someone else won the race — read back whichever question got saved
+ const { data: reread } = await supabase.from('trivia_daily').select('question_id').eq('trivia_date', today).maybeSingle();
+ questionId = reread?.question_id;
+ } else {
+ await supabase.from('trivia_questions').update({ used: true }).eq('id', questionId);
+ }
+ }
+ if (!questionId) return null;
+ const { data: question } = await supabase.from('trivia_questions').select('*').eq('id', questionId).single();
+ return question || null;
+ }
+
+ async function checkTriviaDot() {
+ if (!currentUser) return;
+ const dot = document.getElementById('trivia-dot-menu');
+ if (!dot) return;
+ const { data } = await supabase.from('trivia_attempts').select('id').eq('user_id', currentUser.id).eq('trivia_date', triviaToday()).maybeSingle();
+ dot.style.display = data ?'none' :'inline-block';
+ }
+
+ async function renderTriviaPage() {
+ if (!currentUser) return;
+ const el = document.getElementById('trivia-content');
+ el.innerHTML ='<div class="loading"><span class="spinner"></span>Loading...</div>';
+ clearInterval(triviaTimerInterval);
+ triviaAnswered = false;
+
+ const { data: attempt } = await supabase.from('trivia_attempts').select('*').eq('user_id', currentUser.id).eq('trivia_date', triviaToday()).maybeSingle();
+
+ if (attempt) {
+ const bailedEarly = !attempt.answered_at;
+ if (bailedEarly && (currentProfile?.trivia_streak || 0) !== 0) {
+ // They started but never finished — that's a loss, so the streak
+ // display shouldn't still show yesterday's number.
+ await supabase.from('profiles').update({ trivia_streak: 0 }).eq('id', currentUser.id);
+ currentProfile.trivia_streak = 0;
+ }
+ const headline = attempt.correct
+ ?`You got it! +${attempt.peels_awarded} Peels`
+ : bailedEarly ?"Didn't finish — that counts as wrong" :'Not quite — no Peels today';
+ el.innerHTML = `
+<div class="card" style="text-align:center">
+<div style="font-size:34px">${attempt.correct ?'🎉' :'😬'}</div>
+<h3 style="margin:8px 0 4px">${headline}</h3>
+<div style="font-size:13px;color:#8a8a96">Come back tomorrow for a new question.</div>
+<div class="trivia-streak-pill">🔥 ${currentProfile?.trivia_streak || 0}-day streak</div>
+</div>`;
+ checkTriviaDot();
+ return;
+ }
+
+ triviaTodayQuestion = await getTodayTriviaQuestion();
+ if (!triviaTodayQuestion) {
+ el.innerHTML ='<div class="no-games">No trivia question today — check back soon!</div>';
+ return;
+ }
+
+ const nextReward = triviaReward((currentProfile?.trivia_last_correct_date === triviaYesterday() ? (currentProfile?.trivia_streak || 0) : 0) + 1);
+ el.innerHTML = `
+<div class="card" style="text-align:center">
+<div style="font-size:13px;color:#8a8a96;margin-bottom:8px">Answer in ${TRIVIA_TIME_LIMIT} seconds for ${nextReward} Peels. Current streak: 🔥${currentProfile?.trivia_streak || 0}</div>
+<div style="font-size:11px;color:#b0b0bc;margin-bottom:8px">Once you hit Start, leaving or reloading counts as a wrong answer — no do-overs!</div>
+<button class="admin-btn" id="trivia-start-btn" onclick="startTrivia()">Start</button>
+</div>`;
+ }
+
+ async function startTrivia() {
+ if (!triviaTodayQuestion) return;
+ const el = document.getElementById('trivia-content');
+ const q = triviaTodayQuestion;
+ const today = triviaToday();
+ const startBtn = document.getElementById('trivia-start-btn');
+ if (startBtn) { startBtn.disabled = true; startBtn.textContent ='...'; }
+
+ // Reserve today's attempt the instant they start — this is what makes
+ // leaving, reloading, or losing connection count as wrong: the row
+ // already exists with correct:false, so there's nothing left to "undo"
+ // if they never come back to finish. Far more reliable than trying to
+ // catch a reload/close event, which mobile browsers often don't fire.
+ const { error: reserveError } = await supabase.from('trivia_attempts').insert({
+ user_id: currentUser.id, trivia_date: today, question_id: q.id,
+ started_at: new Date().toISOString(), selected_option: null, correct: false, peels_awarded: 0
+ });
+ if (reserveError) { toast("Couldn't start trivia — try again."); if (startBtn) { startBtn.disabled = false; startBtn.textContent ='Start'; } return; }
+ checkTriviaDot();
+
+ const opts = [['a', q.option_a], ['b', q.option_b], ['c', q.option_c], ['d', q.option_d]];
+ el.innerHTML = `
+<div class="card">
+<div class="trivia-timer" id="trivia-timer">${TRIVIA_TIME_LIMIT}</div>
+<div style="font-weight:700;font-size:15px;margin:10px 0 14px;text-align:center">${escapeHtml(q.question)}</div>
+<div class="pick-buttons" style="grid-template-columns:1fr">
+${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt-${key}" onclick="answerTrivia('${key}')">${escapeHtml(text)}</button>`).join('')}
+</div>
+</div>`;
+
+ triviaAnswered = false;
+ triviaStartMs = Date.now();
+ let remaining = TRIVIA_TIME_LIMIT;
+ const timerEl = document.getElementById('trivia-timer');
+ triviaTimerInterval = setInterval(() => {
+ remaining -= 1;
+ if (timerEl) {
+ timerEl.textContent = remaining;
+ if (remaining <= 3) timerEl.classList.add('low');
+ }
+ if (remaining <= 0) {
+ clearInterval(triviaTimerInterval);
+ if (!triviaAnswered) answerTrivia(null); // ran out of time
+ }
+ }, 1000);
+ }
+
+ async function answerTrivia(selected) {
+ if (triviaAnswered || !triviaTodayQuestion) return;
+ triviaAnswered = true;
+ clearInterval(triviaTimerInterval);
+
+ const elapsedSeconds = (Date.now() - triviaStartMs) / 1000;
+ const q = triviaTodayQuestion;
+ const timedOut = selected === null;
+ const correct = !timedOut && elapsedSeconds <= (TRIVIA_TIME_LIMIT + 1) && selected === q.correct_option;
+
+ // Lock the buttons and show right/wrong
+ document.querySelectorAll('.trivia-option').forEach(btn => btn.disabled = true);
+ const correctBtn = document.getElementById(`trivia-opt-${q.correct_option}`);
+ if (correctBtn) correctBtn.classList.add('correct');
+ if (selected && selected !== q.correct_option) {
+ const wrongBtn = document.getElementById(`trivia-opt-${selected}`);
+ if (wrongBtn) wrongBtn.classList.add('wrong');
+ }
+
+ const today = triviaToday();
+ let newStreak = currentProfile?.trivia_streak || 0;
+ let reward = 0;
+
+ if (correct) {
+ newStreak = (currentProfile?.trivia_last_correct_date === triviaYesterday()) ? newStreak + 1 : 1;
+ reward = triviaReward(newStreak);
+ } else {
+ newStreak = 0;
+ }
+
+ // Update the reservation row placed when they hit Start, rather than
+ // inserting a new one — the unique(user_id, trivia_date) constraint
+ // means only that row exists for today.
+ await supabase.from('trivia_attempts').update({
+ answered_at: new Date().toISOString(), selected_option: selected, correct, peels_awarded: reward
+ }).eq('user_id', currentUser.id).eq('trivia_date', today);
+
+ const profileUpdate = { trivia_streak: newStreak };
+ if (correct) { profileUpdate.trivia_last_correct_date = today; profileUpdate.peels = Math.round((currentProfile?.peels || 0) + reward); }
+ await supabase.from('profiles').update(profileUpdate).eq('id', currentUser.id);
+ currentProfile.trivia_streak = newStreak;
+ if (correct) currentProfile.trivia_last_correct_date = today;
+ if (correct) currentProfile.peels = profileUpdate.peels;
+ await refreshHeader();
+
+ if (correct) {
+ await supabase.from('notifications').insert({
+ user_id: currentUser.id, type:'trivia', title:'🎯 Trivia Correct!',
+ body: `+${reward} Peels · 🔥${newStreak}-day streak`, read: false
+ });
+ }
+
+ checkTriviaDot();
+ setTimeout(() => renderTriviaPage(), 1400);
+ }
+
+ // ─── Admin: Trivia question bank ───────────────────────────
+ async function addTriviaQuestion() {
+ setError('tq-error','');
+ const question = document.getElementById('tq-question').value.trim();
+ const a = document.getElementById('tq-a').value.trim();
+ const b = document.getElementById('tq-b').value.trim();
+ const c = document.getElementById('tq-c').value.trim();
+ const d = document.getElementById('tq-d').value.trim();
+ const correct = document.getElementById('tq-correct').value;
+ if (!question || !a || !b || !c || !d) { setError('tq-error','Fill in the question and all four options.'); return; }
+
+ const { error } = await supabase.from('trivia_questions').insert({
+ question, option_a: a, option_b: b, option_c: c, option_d: d, correct_option: correct
+ });
+ if (error) { setError('tq-error', error.message); return; }
+
+ ['tq-question','tq-a','tq-b','tq-c','tq-d'].forEach(id => document.getElementById(id).value ='');
+ document.getElementById('tq-correct').value ='a';
+ toast('Question added to the bank!');
+ renderTriviaBankList();
+ }
+
+ async function renderTriviaBankList() {
+ const el = document.getElementById('trivia-bank-list');
+ if (!el) return;
+ const { data: questions } = await supabase.from('trivia_questions').select('*').order('created_at', { ascending: false }).limit(100);
+ if (!questions?.length) { el.innerHTML ='<div class="no-games" style="padding:12px">No questions yet — add one above.</div>'; return; }
+ el.innerHTML = `<div style="font-size:12px;color:#8a8a96;margin-bottom:8px">${questions.filter(q =>!q.used).length} unused ·${questions.filter(q =>q.used).length} used</div>` +
+ questions.map(q => `
+<div class="admin-game-item">
+<div class="admin-game-info">
+<strong>${escapeHtml(q.question)}</strong>
+<small>Answer:${escapeHtml(q[`option_${q.correct_option}`])}${q.used ?'<span class="closed-tag">used</span>' :''}</small>
+</div>
+<button class="result-btn" style="padding:5px 10px;font-size:12px" onclick="deleteTriviaQuestion('${q.id}')">Delete</button>
+</div>`).join('');
+ }
+
+ async function deleteTriviaQuestion(id) {
+ await supabase.from('trivia_questions').delete().eq('id', id);
+ toast('Question deleted.');
+ renderTriviaBankList();
  }
 
  // ─── Games page ───────────────────────────────────────────
@@ -2168,7 +2470,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  }
 
  async function renderAdmin() {
- await Promise.all([renderAdminGames(), renderAdminPlayers(), renderAdminBots(), populateChampionshipSelect()]);
+ await Promise.all([renderAdminGames(), renderAdminPlayers(), renderAdminBots(), populateChampionshipSelect(), renderTriviaBankList()]);
  renderAdminCardsSection();
  }
 
@@ -3095,7 +3397,7 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  if (session?.user) {
  currentUser = session.user;
  const profile = await loadProfile(currentUser.id);
- if (profile) { applyProfile(profile); checkUnreadNotifications(); }
+ if (profile) { applyProfile(profile); checkUnreadNotifications(); checkTriviaDot(); }
  } else {
  document.getElementById('auth-overlay').style.display ='flex';
  }
@@ -3106,7 +3408,7 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  if (event ==='SIGNED_IN' && session?.user) {
  currentUser = session.user;
  const profile = await loadProfile(currentUser.id);
- if (profile) { applyProfile(profile); renderUnifiedGamesPage(); renderLeaderboard(); checkUnreadNotifications(); }
+ if (profile) { applyProfile(profile); renderUnifiedGamesPage(); renderLeaderboard(); checkUnreadNotifications(); checkTriviaDot(); }
  } else if (event ==='SIGNED_OUT') {
  currentUser = null; currentProfile = null;
  document.getElementById('auth-overlay').style.display ='flex';
