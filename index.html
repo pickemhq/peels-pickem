@@ -1232,6 +1232,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  let triviaStartMs = null;
  let triviaAnswered = false;
  let triviaTodayQuestion = null;
+ let triviaSelectedOption = null;
 
  function triviaReward(streakDay) {
  const cappedDay = Math.min(streakDay, TRIVIA_STREAK_CAP_DAYS);
@@ -1299,6 +1300,7 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  el.innerHTML ='<div class="loading"><span class="spinner"></span>Loading...</div>';
  clearInterval(triviaTimerInterval);
  triviaAnswered = false;
+ triviaSelectedOption = null;
 
  const { data: attempt } = await supabase.from('trivia_attempts').select('*').eq('user_id', currentUser.id).eq('trivia_date', triviaToday()).maybeSingle();
 
@@ -1365,11 +1367,13 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
 <div class="trivia-timer" id="trivia-timer">${TRIVIA_TIME_LIMIT}</div>
 <div style="font-weight:700;font-size:15px;margin:10px 0 14px;text-align:center">${escapeHtml(q.question)}</div>
 <div class="pick-buttons" style="grid-template-columns:1fr">
-${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt-${key}" onclick="answerTrivia('${key}')">${escapeHtml(text)}</button>`).join('')}
+${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt-${key}" onclick="selectTriviaOption('${key}')">${escapeHtml(text)}</button>`).join('')}
 </div>
+<button class="admin-btn" id="trivia-submit-btn" onclick="submitTriviaAnswer()" disabled style="margin-top:10px;opacity:.5">Submit</button>
 </div>`;
 
  triviaAnswered = false;
+ triviaSelectedOption = null;
  triviaStartMs = Date.now();
  let remaining = TRIVIA_TIME_LIMIT;
  const timerEl = document.getElementById('trivia-timer');
@@ -1381,9 +1385,24 @@ ${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt
  }
  if (remaining <= 0) {
  clearInterval(triviaTimerInterval);
- if (!triviaAnswered) answerTrivia(null); // ran out of time
+ if (!triviaAnswered) answerTrivia(triviaSelectedOption); // time's up — submit whatever (if anything) was picked
  }
  }, 1000);
+ }
+
+ function selectTriviaOption(key) {
+ if (triviaAnswered) return;
+ triviaSelectedOption = key;
+ document.querySelectorAll('.trivia-option').forEach(btn => btn.classList.remove('selected'));
+ const btn = document.getElementById(`trivia-opt-${key}`);
+ if (btn) btn.classList.add('selected');
+ const submitBtn = document.getElementById('trivia-submit-btn');
+ if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity ='1'; }
+ }
+
+ function submitTriviaAnswer() {
+ if (triviaAnswered || !triviaSelectedOption) return;
+ answerTrivia(triviaSelectedOption);
  }
 
  async function answerTrivia(selected) {
@@ -1398,6 +1417,8 @@ ${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt
 
  // Lock the buttons and show right/wrong
  document.querySelectorAll('.trivia-option').forEach(btn => btn.disabled = true);
+ const submitBtnEl = document.getElementById('trivia-submit-btn');
+ if (submitBtnEl) submitBtnEl.disabled = true;
  const correctBtn = document.getElementById(`trivia-opt-${q.correct_option}`);
  if (correctBtn) correctBtn.classList.add('correct');
  if (selected && selected !== q.correct_option) {
