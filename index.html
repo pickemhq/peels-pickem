@@ -883,6 +883,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  if (profile) applyProfile(profile);
  renderUnifiedGamesPage();
  renderLeaderboard();
+ await syncMissedUpdates(currentUser.id); // brand-new account — catch them up on every past update
  checkUnreadNotifications();
  checkTriviaDot();
  // Show starter card picker after login
@@ -1294,8 +1295,23 @@ ${n.body?`<div style="font-size:12px;color:#8a8a96;margin-top:2px">${escapeHtml(
  dot.style.display = data ?'none' :'inline-block';
  }
 
+ // If the app is just left open/backgrounded overnight, nothing re-checks
+ // the date on its own. This catches that: whenever the tab becomes
+ // visible again, if the calendar day has changed since Trivia last
+ // rendered, refresh it (and the unread dot) automatically.
+ let triviaLastRenderedDate = null;
+ document.addEventListener('visibilitychange', () => {
+ if (document.visibilityState !=='visible' || !currentUser) return;
+ checkTriviaDot();
+ const pageEl = document.getElementById('page-trivia');
+ if (pageEl && pageEl.classList.contains('active') && triviaLastRenderedDate && triviaLastRenderedDate !== triviaToday()) {
+ renderTriviaPage();
+ }
+ });
+
  async function renderTriviaPage() {
  if (!currentUser) return;
+ triviaLastRenderedDate = triviaToday();
  const el = document.getElementById('trivia-content');
  el.innerHTML ='<div class="loading"><span class="spinner"></span>Loading...</div>';
  clearInterval(triviaTimerInterval);
@@ -2208,6 +2224,10 @@ ${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt
  const text = document.getElementById('update-text').value.trim();
  if (!text) { setError('update-error','Write something first.'); return; }
 
+ // Store the update permanently so anyone who signs up later still sees it
+ const { data: updateRow, error: insertError } = await supabase.from('app_updates').insert({ title:'📢 App Update', body: text }).select().single();
+ if (insertError) { setError('update-error', insertError.message); return; }
+
  const { data: allUsers, error: usersError } = await supabase.from('profiles').select('id').eq('is_admin', false).eq('is_bot', false);
  if (usersError) { setError('update-error', usersError.message); return; }
 
@@ -2215,6 +2235,7 @@ ${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt
  const notifRows = allUsers.map(u => ({
  user_id: u.id,
  type:'update',
+ update_id: updateRow.id,
  title:'📢 App Update',
  body: text,
  read: false
@@ -2228,6 +2249,36 @@ ${opts.map(([key,text]) =>`<button class="pick-btn trivia-option" id="trivia-opt
 
  document.getElementById('update-text').value ='';
  toast(`Update sent to${allUsers?.length||0} users!`);
+ }
+
+ // Backfills any app_updates a brand-new account wasn't around for yet.
+ // Only ever needs to run once, right after signup — anyone who already
+ // had an account when an update went out gets it directly from
+ // publishUpdate() above, so there's no need to re-run this on every
+ // login. (That was the earlier bug: running it on every sign-in risked
+ // re-notifying people who'd already seen it.)
+ // The upsert below is also belt-and-suspenders duplicate-proof: even if
+ // this somehow ran twice for the same user, the unique constraint on
+ // (user_id, update_id) means the database itself blocks a repeat insert
+ // — it doesn't rely on a client-side check being perfectly correct.
+ async function syncMissedUpdates(userId) {
+ try {
+ const { data: allUpdates } = await supabase.from('app_updates').select('id, title, body').order('created_at', { ascending: true });
+ if (!allUpdates?.length) return;
+
+ const rows = allUpdates.map(u => ({
+ user_id: userId,
+ type:'update',
+ update_id: u.id,
+ title: u.title,
+ body: u.body,
+ read: false
+ }));
+ await supabase.from('notifications').upsert(rows, { onConflict:'user_id,update_id', ignoreDuplicates: true });
+ checkUnreadNotifications();
+ } catch(e) {
+ console.error('syncMissedUpdates error:', e);
+ }
  }
 
  // ─── Admin: Championship resolution ────────────────────────
