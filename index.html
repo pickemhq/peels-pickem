@@ -3531,38 +3531,46 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  }
 
  // ─── Boot ─────────────────────────────────────────────────
- async function boot() {
- try {
- const { data: { session } } = await supabase.auth.getSession();
- if (session?.user) {
- currentUser = session.user;
- const profile = await loadProfile(currentUser.id);
- if (profile) { applyProfile(profile); checkUnreadNotifications(); checkTriviaDot(); }
- } else {
- document.getElementById('auth-overlay').style.display ='flex';
+ // Recovery links can arrive two different ways depending on your Supabase
+ // project's auth settings: older "implicit" links land as a URL hash
+ // (#access_token=...&type=recovery) which the client picks up on its own,
+ // while newer "PKCE" links land as a query string (?code=...&type=recovery)
+ // which has to be exchanged manually. This handles both, and doesn't rely
+ // solely on catching the PASSWORD_RECOVERY event (which is easy to miss
+ // if it fires before the listener below is attached).
+ function isRecoveryLink() {
+ const q = new URLSearchParams(window.location.search);
+ const h = new URLSearchParams(window.location.hash.replace(/^#/,''));
+ return q.get('type') ==='recovery' || h.get('type') ==='recovery';
  }
- renderUnifiedGamesPage();
- renderLeaderboard();
 
- supabase.auth.onAuthStateChange(async (event, session) =>{
- if (event ==='PASSWORD_RECOVERY' && session?.user) {
- // They clicked the emailed reset link — Supabase already logged them
- // into a temporary recovery session. Let them into the app underneath,
- // but force the "choose a new password" modal open on top of it.
- currentUser = session.user;
- const profile = await loadProfile(currentUser.id);
- if (profile) applyProfile(profile);
+ function openResetPasswordModal() {
  document.getElementById('auth-overlay').style.display ='none';
- renderUnifiedGamesPage();
- renderLeaderboard();
  document.getElementById('reset-password-new').value ='';
  document.getElementById('reset-password-confirm').value ='';
  setError('reset-password-error','');
  document.getElementById('reset-password-modal').style.display ='flex';
+ }
+
+ async function boot() {
+ try {
+ const recoveryLink = isRecoveryLink();
+
+ // Attach the listener FIRST so a PASSWORD_RECOVERY event fired during
+ // the calls below (getSession / exchangeCodeForSession) isn't missed.
+ supabase.auth.onAuthStateChange(async (event, session) =>{
+ if (event ==='PASSWORD_RECOVERY' && session?.user) {
+ currentUser = session.user;
+ const profile = await loadProfile(currentUser.id);
+ if (profile) applyProfile(profile);
+ renderUnifiedGamesPage();
+ renderLeaderboard();
+ openResetPasswordModal();
  } else if (event ==='SIGNED_IN' && session?.user) {
  currentUser = session.user;
  const profile = await loadProfile(currentUser.id);
  if (profile) { applyProfile(profile); renderUnifiedGamesPage(); renderLeaderboard(); checkUnreadNotifications(); checkTriviaDot(); }
+ if (recoveryLink) openResetPasswordModal();
  } else if (event ==='SIGNED_OUT') {
  currentUser = null; currentProfile = null;
  document.getElementById('auth-overlay').style.display ='flex';
@@ -3576,6 +3584,29 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  renderUnifiedGamesPage();
  }
  });
+
+ // PKCE-style link: exchange the code for a session ourselves.
+ const code = new URLSearchParams(window.location.search).get('code');
+ if (code) {
+ const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+ if (error) console.error('exchangeCodeForSession error:', error);
+ }
+
+ const { data: { session } } = await supabase.auth.getSession();
+ if (session?.user) {
+ currentUser = session.user;
+ const profile = await loadProfile(currentUser.id);
+ if (profile) { applyProfile(profile); checkUnreadNotifications(); checkTriviaDot(); }
+ // Belt-and-suspenders: if the link says this is a recovery flow and we
+ // now have a session, force the modal open even if no PASSWORD_RECOVERY
+ // event fired (some SDK versions only fire SIGNED_IN after a manual
+ // exchangeCodeForSession call).
+ if (recoveryLink) openResetPasswordModal();
+ } else {
+ document.getElementById('auth-overlay').style.display ='flex';
+ }
+ renderUnifiedGamesPage();
+ renderLeaderboard();
  } catch(e) {
  console.error('Boot error:', e);
  }
