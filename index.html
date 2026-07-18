@@ -461,6 +461,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <div id="auth-signup-fields" style="display:none"><input class="auth-input" id="auth-username" placeholder="Username"/></div>
 <input class="auth-input" id="auth-email" placeholder="Email"/>
 <input class="auth-input" id="auth-password" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')authSubmit()"/>
+<div id="auth-forgot-wrap" style="text-align:right;margin:-6px 0 10px"><a onclick="showForgotPassword()" style="color:#8a7300;font-size:12px;cursor:pointer;text-decoration:underline">Forgot password?</a></div>
 <div class="auth-error" id="auth-error"></div>
 <button class="auth-btn" onclick="authSubmit()" id="auth-main-btn">Sign In</button>
 <div class="auth-switch" id="auth-switch">No account?<a onclick="toggleAuth()">Sign up</a>— you get 100 free Peels</div>
@@ -478,6 +479,28 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
 <input class="modal-input" id="admin-pass-input" type="password" placeholder="Admin password" onkeydown="if(event.key==='Enter')submitAdminLogin()"/>
 <div class="auth-error" id="admin-pass-error"></div>
 <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('admin-modal')">Cancel</button><button class="modal-confirm" onclick="submitAdminLogin()">Enter</button></div>
+</div>
+</div>
+
+<!-- Forgot password modal -->
+<div class="modal-overlay" id="forgot-password-modal" style="display:none">
+<div class="modal-box">
+<h3>Reset Password</h3>
+<p style="font-size:13px;color:#8a8a96;margin-bottom:10px">Enter your account email and we'll send you a link to reset your password.</p>
+<input class="modal-input" id="forgot-password-email" type="email" placeholder="Email" onkeydown="if(event.key==='Enter')sendPasswordReset()"/>
+<div class="auth-error" id="forgot-password-error"></div>
+<div class="modal-btns"><button class="modal-cancel" onclick="closeModal('forgot-password-modal')">Cancel</button><button class="modal-confirm" id="forgot-password-btn" onclick="sendPasswordReset()">Send Link</button></div>
+</div>
+</div>
+
+<!-- Reset password modal (opened automatically from the emailed link) -->
+<div class="modal-overlay" id="reset-password-modal" style="display:none">
+<div class="modal-box">
+<h3>Choose a New Password</h3>
+<input class="modal-input" id="reset-password-new" type="password" placeholder="New password" onkeydown="if(event.key==='Enter')submitNewPassword()"/>
+<input class="modal-input" id="reset-password-confirm" type="password" placeholder="Confirm new password" onkeydown="if(event.key==='Enter')submitNewPassword()"/>
+<div class="auth-error" id="reset-password-error"></div>
+<div class="modal-btns"><button class="modal-confirm" id="reset-password-btn" onclick="submitNewPassword()" style="grid-column:1/-1">Save New Password</button></div>
 </div>
 </div>
 
@@ -856,6 +879,7 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  isSignup = !isSignup;
  document.getElementById('auth-sub').textContent = isSignup ?'Create your account — 100 free Peels!' :'Sign in to place your picks';
  document.getElementById('auth-signup-fields').style.display = isSignup ?'block' :'none';
+ document.getElementById('auth-forgot-wrap').style.display = isSignup ?'none' :'block';
  document.getElementById('auth-main-btn').textContent = isSignup ?'Sign Up' :'Sign In';
  document.getElementById('auth-switch').innerHTML = isSignup
  ?'Have an account?<a onclick="toggleAuth()">Sign in</a>'
@@ -913,6 +937,50 @@ Or email us directly at <a href="mailto:peelspickem@gmail.com" style="color:#9a8
  setError('admin-pass-error','');
  document.getElementById('admin-modal').style.display ='flex';
  setTimeout(() =>document.getElementById('admin-pass-input').focus(), 100);
+ }
+
+ // ─── Forgot / reset password ─────────────────────────────
+ function showForgotPassword() {
+ // Prefill with whatever they've already typed on the sign-in form
+ document.getElementById('forgot-password-email').value = document.getElementById('auth-email').value.trim();
+ setError('forgot-password-error','');
+ document.getElementById('forgot-password-modal').style.display ='flex';
+ setTimeout(() =>document.getElementById('forgot-password-email').focus(), 100);
+ }
+
+ async function sendPasswordReset() {
+ setError('forgot-password-error','');
+ const email = document.getElementById('forgot-password-email').value.trim();
+ if (!email) { setError('forgot-password-error','Enter your email first.'); return; }
+ const btn = document.getElementById('forgot-password-btn');
+ btn.textContent ='...'; btn.disabled = true;
+ // redirectTo brings them back to this same page — Supabase appends a
+ // recovery token to the URL, which the onAuthStateChange listener in
+ // boot() picks up as a PASSWORD_RECOVERY event and opens the reset modal.
+ const { error } = await supabase.auth.resetPasswordForEmail(email, {
+ redirectTo: window.location.origin + window.location.pathname
+ });
+ btn.textContent ='Send Link'; btn.disabled = false;
+ if (error) { setError('forgot-password-error', error.message); return; }
+ closeModal('forgot-password-modal');
+ toast("If that email has an account, we've sent a reset link!");
+ }
+
+ async function submitNewPassword() {
+ setError('reset-password-error','');
+ const pass = document.getElementById('reset-password-new').value;
+ const confirm = document.getElementById('reset-password-confirm').value;
+ if (!pass || pass.length < 6) { setError('reset-password-error','Password must be at least 6 characters.'); return; }
+ if (pass !== confirm) { setError('reset-password-error',"Passwords don't match."); return; }
+ const btn = document.getElementById('reset-password-btn');
+ btn.textContent ='...'; btn.disabled = true;
+ const { error } = await supabase.auth.updateUser({ password: pass });
+ btn.textContent ='Save New Password'; btn.disabled = false;
+ if (error) { setError('reset-password-error', error.message); return; }
+ closeModal('reset-password-modal');
+ toast('Password updated! You\'re signed in.');
+ // Clean the recovery token out of the URL bar
+ window.history.replaceState({}, document.title, window.location.pathname);
  }
 
  async function submitAdminLogin() {
@@ -3477,7 +3545,21 @@ ${rows||'<div style="font-size:13px;color:#a0a0ae;padding:8px 0">No games logged
  renderLeaderboard();
 
  supabase.auth.onAuthStateChange(async (event, session) =>{
- if (event ==='SIGNED_IN' && session?.user) {
+ if (event ==='PASSWORD_RECOVERY' && session?.user) {
+ // They clicked the emailed reset link — Supabase already logged them
+ // into a temporary recovery session. Let them into the app underneath,
+ // but force the "choose a new password" modal open on top of it.
+ currentUser = session.user;
+ const profile = await loadProfile(currentUser.id);
+ if (profile) applyProfile(profile);
+ document.getElementById('auth-overlay').style.display ='none';
+ renderUnifiedGamesPage();
+ renderLeaderboard();
+ document.getElementById('reset-password-new').value ='';
+ document.getElementById('reset-password-confirm').value ='';
+ setError('reset-password-error','');
+ document.getElementById('reset-password-modal').style.display ='flex';
+ } else if (event ==='SIGNED_IN' && session?.user) {
  currentUser = session.user;
  const profile = await loadProfile(currentUser.id);
  if (profile) { applyProfile(profile); renderUnifiedGamesPage(); renderLeaderboard(); checkUnreadNotifications(); checkTriviaDot(); }
